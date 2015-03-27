@@ -1,7 +1,8 @@
-package org.chronopolis.earth;
+package org.chronopolis.earth.api;
 
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.models.Restore;
 import retrofit.http.Body;
 import retrofit.http.GET;
 import retrofit.http.PATCH;
@@ -11,13 +12,14 @@ import retrofit.http.Path;
 /**
  * Created by shake on 3/2/15.
  */
-public interface Balustrade {
+public interface BalustradeTransfers {
 
+    // Replications
     @GET("/api-v1/replicate/")
     Response<Replication> getReplications();
 
     @POST("/api-v1/replicate/")
-    void postReplication(@Body Replication replication);
+    void createReplication(@Body Replication replication);
 
     @GET("/api-v1/replicate/{id}/")
     Replication getReplication(@Path("id") String id);
@@ -27,4 +29,24 @@ public interface Balustrade {
 
     @PATCH("/api-v1/replicate/{id}/")
     Replication patchReplication(@Path("id") String id, @Body Replication replication);
+
+    // Restores
+    @GET("/api-v1/restore/")
+    Response<Restore> getRestores();
+
+    @POST("/api-v1/restore/")
+    void createRestore(@Body Restore replication);
+
+    @GET("/api-v1/restore/{id}/")
+    Restore getRestore(@Path("id") String id);
+
+    @POST("/api-v1/restore/{id}/")
+    Restore updateRestore(@Path("id") String id, @Body Restore replication);
+
+    @PATCH("/api-v1/restore/{id}/")
+    Restore patchRestore(@Path("id") String id, @Body Restore replication);
+
+
+
+
 }
