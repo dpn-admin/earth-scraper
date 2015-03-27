@@ -8,6 +8,9 @@ import retrofit.http.GET;
 import retrofit.http.PATCH;
 import retrofit.http.POST;
 import retrofit.http.Path;
+import retrofit.http.QueryMap;
+
+import java.util.Map;
 
 /**
  * Created by shake on 3/2/15.
@@ -16,7 +19,7 @@ public interface BalustradeTransfers {
 
     // Replications
     @GET("/api-v1/replicate/")
-    Response<Replication> getReplications();
+    Response<Replication> getReplications(@QueryMap Map<String, String> params);
 
     @POST("/api-v1/replicate/")
     void createReplication(@Body Replication replication);
@@ -32,7 +35,7 @@ public interface BalustradeTransfers {
 
     // Restores
     @GET("/api-v1/restore/")
-    Response<Restore> getRestores();
+    Response<Restore> getRestores(@QueryMap Map<String, String> params);
 
     @POST("/api-v1/restore/")
     void createRestore(@Body Restore replication);
