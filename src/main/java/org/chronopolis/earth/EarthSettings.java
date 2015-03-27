@@ -1,23 +1,37 @@
 package org.chronopolis.earth;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import java.util.List;
 
 /**
  * Created by shake on 11/14/14.
  */
-@Component
+@ConfigurationProperties(prefix = "earth")
 public class EarthSettings {
 
-    @Value("${auth.key:5cecab71a3d952df9083b2c51ba4a2c5a664d526}")
-    // @Value("${auth.key:081f1b0f37be8923502fd54c54eb381c9318092b}")
-    String authorizationKey;
+    List<Endpoint> endpoints;
 
-    public String getAuthorizationKey() {
-        return authorizationKey;
-    }
+    static class Endpoint {
+        String authKey;
+        String apiRoot;
 
-    public void setAuthorizationKey(final String authorizationKey) {
-        this.authorizationKey = authorizationKey;
+        public String getApiRoot() {
+            return apiRoot;
+        }
+
+        public Endpoint setApiRoot(String apiRoot) {
+            this.apiRoot = apiRoot;
+            return this;
+        }
+
+        public String getAuthKey() {
+            return authKey;
+        }
+
+        public Endpoint setAuthKey(String authKey) {
+            this.authKey = authKey;
+            return this;
+        }
     }
 }

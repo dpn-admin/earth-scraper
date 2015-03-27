@@ -25,9 +25,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.spi.FileSystemProvider;
 import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
 import java.security.cert.X509Certificate;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -54,9 +52,11 @@ public class Earth implements CommandLineRunner {
         System.setProperty("jsse.enableSNIExtension", "false");
         disableCertValidation();
 
+        // TODO: Cycle through each and query
+        EarthSettings.Endpoint firstEndpoint = earthSettings.endpoints.get(0);
         RestAdapter adapter = new RestAdapter.Builder()
-                .setEndpoint("https://devops.aptrust.org/dpnode/")
-                .setRequestInterceptor(new TokenInterceptor(earthSettings.getAuthorizationKey()))
+                .setEndpoint(firstEndpoint.getApiRoot())
+                .setRequestInterceptor(new TokenInterceptor(firstEndpoint.getAuthKey()))
                 .setLogLevel(RestAdapter.LogLevel.FULL)
                 .build();
 
