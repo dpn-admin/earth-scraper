@@ -5,6 +5,9 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
+import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.models.Replication;
+import org.chronopolis.earth.models.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -39,7 +42,7 @@ public class Earth implements CommandLineRunner {
     @Autowired
     EarthSettings earthSettings;
 
-    EarthAPI earth;
+    BalustradeTransfers balustrade;
 
     public static void main(String[] args) {
         SpringApplication.exit(SpringApplication.run(Earth.class));
@@ -57,7 +60,7 @@ public class Earth implements CommandLineRunner {
                 .setLogLevel(RestAdapter.LogLevel.FULL)
                 .build();
 
-        earth = adapter.create(EarthAPI.class);
+        balustrade = adapter.create(BalustradeTransfers.class);
 
         ////
         // First we queue any transfers which are incomplete
@@ -80,13 +83,13 @@ public class Earth implements CommandLineRunner {
         int page = 1;
         String next;
         do {
-            TransferResponse transfers = earth.getTransfers(query);
+            Response<Replication> transfers = balustrade.getReplications(query);
             next = transfers.getNext();
             System.out.printf("Count: %d\nNext: %s\nPrevious: %s\n",
                     transfers.getCount(),
                     transfers.getNext(),
                     transfers.getPrevious());
-            for (Transfer transfer : transfers.getResults()) {
+            for (Replication transfer : transfers.getResults()) {
                 download(transfer);
                 update(transfer);
             }
@@ -96,8 +99,8 @@ public class Earth implements CommandLineRunner {
         } while (next != null);
     }
 
-    private void download(Transfer transfer) throws InterruptedException {
-        System.out.printf("Getting %s from %s\n", transfer.getDpn_object_id(), transfer.getLink());
+    private void download(Replication transfer) throws InterruptedException {
+        System.out.printf("Getting %s from %s\n", transfer.getUuid(), transfer.getLink());
         String[] cmd = new String[]{"rsync", "-aL", "--stats", transfer.getLink(), "/tmp/dpn/"};
         String stats;
 
@@ -132,10 +135,10 @@ public class Earth implements CommandLineRunner {
     }
 
 
-    private void update(Transfer transfer) {
+    private void update(Replication transfer) {
         // Get the files digest
         HashFunction func = Hashing.sha256();
-        Path file = Paths.get("/tmp/dpn/", transfer.dpn_object_id + ".tar");
+        Path file = Paths.get("/tmp/dpn/", transfer.getUuid() + ".tar");
         HashCode hash;
         try {
             hash = Files.hash(file.toFile(), func);
@@ -146,8 +149,8 @@ public class Earth implements CommandLineRunner {
 
         // Set the receipt
         String receipt = hash.toString();
-        transfer.setReceipt(receipt);
-        earth.updateTransfer(transfer.event_id, transfer);
+        transfer.setFixityValue(receipt);
+        balustrade.updateReplication(transfer.getReplicationId(), transfer);
     }
 
     private void disableCertValidation() {
