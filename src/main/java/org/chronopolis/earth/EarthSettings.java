@@ -15,6 +15,7 @@ public class EarthSettings {
     static class Endpoint {
         String authKey;
         String apiRoot;
+        String name;
 
         public String getApiRoot() {
             return apiRoot;
@@ -31,6 +32,15 @@ public class EarthSettings {
 
         public Endpoint setAuthKey(String authKey) {
             this.authKey = authKey;
+            return this;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public Endpoint setName(String name) {
+            this.name = name;
             return this;
         }
     }
