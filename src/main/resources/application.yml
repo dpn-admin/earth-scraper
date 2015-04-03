@@ -3,6 +3,8 @@ earth:
     -
      auth-key: 'my-auth-key'
      api-root: 'http://dpn-server-1.org'
+     name: 'node-1'
     -
      auth-key: 'other-auth-key'
      api-root: 'http://dpn-server-2.org'
+     name: 'node-2'
