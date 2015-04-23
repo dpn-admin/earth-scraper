@@ -5,9 +5,13 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +21,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -28,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 @EnableScheduling
 public class Downloader {
+    private final Logger log = LoggerFactory.getLogger(Downloader.class);
 
     @Autowired
     BalustradeTransfers balustrade;
@@ -151,6 +160,51 @@ public class Downloader {
         if (updated.isFixityAccept()) {
             // push to chronopolis
             // chron.putBag(baggyBag);
+        }
+    }
+
+    /**
+     * Explode a tarball for a given transfer
+     *
+     * @param transfer
+     */
+    private void untar(Replication transfer) throws IOException {
+        Path tarball = Paths.get("/tmp/dpn/", transfer.getUuid() + ".tar");
+        String bags = "/tmp/dpn/";
+        String depositor = transfer.getFromNode();
+
+        // Set up our tar stream and channel
+        TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball));
+        TarArchiveEntry entry = tais.getNextTarEntry();
+        ReadableByteChannel inChannel = Channels.newChannel(tais);
+
+        // Get our root path (just the staging area), and create an updated bag path
+        Path root = Paths.get(bags, depositor);
+        Path bag = root.resolve(entry.getName());
+
+        while (entry != null) {
+            Path entryPath = root.resolve(entry.getName());
+
+            if (entry.isDirectory()) {
+                log.trace("Creating directory {}", entry.getName());
+                java.nio.file.Files.createDirectories(entryPath);
+            } else {
+                log.trace("Creating file {}", entry.getName());
+
+                entryPath.getParent().toFile().mkdirs();
+
+                // In case files are greater than 2^32 bytes, we need to use a
+                // RandomAccessFile and FileChannel to write them
+                RandomAccessFile file = new RandomAccessFile(entryPath.toFile(), "rw");
+                FileChannel out = file.getChannel();
+
+                // The TarArchiveInputStream automatically updates its offset as
+                // it is read, so we don't need to worry about it
+                out.transferFrom(inChannel, 0, entry.getSize());
+                out.close();
+            }
+
+            entry = tais.getNextTarEntry();
         }
     }
 
