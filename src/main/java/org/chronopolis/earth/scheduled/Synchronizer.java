@@ -1,9 +1,12 @@
 package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableMap;
+import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.NodeAPIs;
+import org.chronopolis.earth.api.TransferAPIs;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * TODO: Hook in endpoints
+ * TODO: Make sure we only sync items which the remote node is the admin node of
  *
  *
  * Created by shake on 3/31/15.
@@ -23,13 +26,13 @@ import java.util.Map;
 public class Synchronizer {
 
     @Autowired
-    BalustradeNode nodeAPI;
+    BagAPIs bagAPIs;
 
     @Autowired
-    BalustradeBag bagAPI;
+    TransferAPIs transferAPIs;
 
     @Autowired
-    BalustradeTransfers transferAPI;
+    NodeAPIs nodeAPIs;
 
     @Scheduled(cron="0 55 * * * *")
     public void synchronize() {
@@ -39,20 +42,22 @@ public class Synchronizer {
     }
 
     private void syncTransfers() {
-        transferAPI.getReplications(new HashMap());
-        transferAPI.getRestores(new HashMap());
+        for (BalustradeTransfers api : transferAPIs.apis) {
+            api.getReplications(new HashMap());
+            api.getRestores(new HashMap());
+        }
     }
 
     private void syncBags() {
         Map<String, String> params = new ImmutableMap.Builder<String, String>()
                 .put("admin_node", "sample-node")
                 .build();
-        bagAPI.getBags(params);
+        // bagAPI.getBags(params);
     }
 
     private void syncNode() {
         String node = "sample-node";
-        nodeAPI.getNode(node);
+        // nodeAPI.getNode(node);
     }
 
 }
