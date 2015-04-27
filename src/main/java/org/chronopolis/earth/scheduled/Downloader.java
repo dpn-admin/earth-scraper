@@ -8,6 +8,7 @@ import com.google.common.io.Files;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.slf4j.Logger;
@@ -31,6 +32,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * TODO: sop -> log
+ *
  * Created by shake on 3/31/15.
  */
 @Component
@@ -39,7 +42,7 @@ public class Downloader {
     private final Logger log = LoggerFactory.getLogger(Downloader.class);
 
     @Autowired
-    BalustradeTransfers balustrade;
+    TransferAPIs transfers;
 
     /**
      * Replication ongoing and new transfers from a dpn node
@@ -51,12 +54,15 @@ public class Downloader {
         Map<String, String> ongoing = Maps.newHashMap();
         ongoing.put("status", "A");
         ongoing.put("fixity", "False");
-        System.out.println("Getting ongoing transfers");
-        get(ongoing);
+
+        for (BalustradeTransfers api : transfers.apis) {
+            System.out.println("Getting ongoing transfers");
+            get(api, ongoing);
 
 
-        System.out.println("Getting new transfers");
-        get(Maps.<String, String>newHashMap());
+            System.out.println("Getting new transfers");
+            get(api, Maps.<String, String>newHashMap());
+        }
 
         System.out.println("Done");
     }
@@ -67,7 +73,8 @@ public class Downloader {
      * @param query
      * @throws InterruptedException
      */
-    private void get(Map<String, String> query) throws InterruptedException {
+    private void get(BalustradeTransfers balustrade,
+                     Map<String, String> query) throws InterruptedException {
         int page = 1;
         String next;
         do {
@@ -79,7 +86,7 @@ public class Downloader {
                     transfers.getPrevious());
             for (Replication transfer : transfers.getResults()) {
                 download(transfer);
-                update(transfer);
+                update(balustrade, transfer);
             }
 
             ++page;
@@ -140,7 +147,7 @@ public class Downloader {
      *
      * @param transfer
      */
-    private void update(Replication transfer) {
+    private void update(BalustradeTransfers balustrade, Replication transfer) {
         // Get the files digest
         HashFunction func = Hashing.sha256();
         Path file = Paths.get("/tmp/dpn/", transfer.getUuid() + ".tar");
