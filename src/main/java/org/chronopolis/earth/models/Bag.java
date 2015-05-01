@@ -3,7 +3,7 @@ package org.chronopolis.earth.models;
 import org.joda.time.DateTime;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /**
  * Created by shake on 3/27/15.
@@ -21,7 +21,7 @@ public class Bag {
     List<String> interpretive;
     List<String> rights;
     List<String> replicatingNodes;
-    Set<String> fixities;
+    Map<String, String> fixities;
     DateTime createdAt;
     DateTime updatedAt;
 
@@ -127,11 +127,11 @@ public class Bag {
         return this;
     }
 
-    public Set<String> getFixities() {
+    public Map<String, String> getFixities() {
         return fixities;
     }
 
-    public Bag setFixities(Set<String> fixities) {
+    public Bag setFixities(Map<String, String> fixities) {
         this.fixities = fixities;
         return this;
     }
