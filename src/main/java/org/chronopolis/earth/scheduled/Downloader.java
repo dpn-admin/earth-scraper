@@ -7,10 +7,13 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.chronopolis.earth.EarthSettings;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.rest.api.IngestAPI;
+import org.chronopolis.rest.models.IngestRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +46,13 @@ public class Downloader {
 
     @Autowired
     TransferAPIs transfers;
+
+    @Autowired
+    IngestAPI chronopolis;
+
+    @Autowired
+    EarthSettings settings;
+
 
     /**
      * Replication ongoing and new transfers from a dpn node
@@ -97,12 +107,17 @@ public class Downloader {
     /**
      * Download a bag from a dpn node with rsync
      *
+     * Configured so that our final download location looks like:
+     * /staging/area/from_node/bag_uuid
+     *
      * @param transfer
      * @throws InterruptedException
      */
     private void download(Replication transfer) throws InterruptedException {
         log.debug("Getting {} from {}\n", transfer.getUuid(), transfer.getLink());
-        String[] cmd = new String[]{"rsync", "-aL", "--stats", transfer.getLink(), "/tmp/dpn/"};
+        String stage = settings.getStage();
+        Path local = Paths.get(stage, transfer.getFromNode());
+        String[] cmd = new String[]{"rsync", "-aL", "--stats", transfer.getLink(), local.toString()};
         String stats;
 
         ProcessBuilder pb = new ProcessBuilder(cmd);
@@ -117,7 +132,7 @@ public class Downloader {
                 log.error("There was an error rsyncing!");
             }
 
-            System.out.printf("Rsync stats:\n %s", stats);
+            log.debug("Rsync stats:\n {}", stats);
         } catch (IOException e) {
             log.error("Error executing rsync");
         }
@@ -150,7 +165,8 @@ public class Downloader {
     private void update(BalustradeTransfers balustrade, Replication transfer) {
         // Get the files digest
         HashFunction func = Hashing.sha256();
-        Path file = Paths.get("/tmp/dpn/", transfer.getUuid() + ".tar");
+        String stage = settings.getStage();
+        Path file = Paths.get(stage, transfer.getFromNode(), transfer.getUuid() + ".tar");
         HashCode hash;
         try {
             hash = Files.hash(file.toFile(), func);
@@ -166,7 +182,13 @@ public class Downloader {
 
         if (updated.isFixityAccept()) {
             // push to chronopolis
-            // chron.putBag(baggyBag);
+            /*
+            IngestRequest request = new IngestRequest();
+            request.setDepositor(updated.getFromNode());
+            request.setName(updated.getUuid());
+            request.setLocation(updated.getFromNode() + "/" + updated.getUuid());
+            chronopolis.putBag(request);
+            */
         }
     }
 
@@ -176,8 +198,10 @@ public class Downloader {
      * @param transfer
      */
     private void untar(Replication transfer) throws IOException {
-        Path tarball = Paths.get("/tmp/dpn/", transfer.getUuid() + ".tar");
-        String bags = "/tmp/dpn/";
+        String stage = settings.getStage();
+        Path tarball = Paths.get(stage, transfer.getFromNode(), transfer.getUuid() + ".tar");
+
+        String bags = stage;
         String depositor = transfer.getFromNode();
 
         // Set up our tar stream and channel
