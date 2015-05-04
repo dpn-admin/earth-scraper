@@ -56,15 +56,15 @@ public class Downloader {
         ongoing.put("fixity", "False");
 
         for (BalustradeTransfers api : transfers.apis) {
-            System.out.println("Getting ongoing transfers");
+            log.debug("Getting ongoing transfers");
             get(api, ongoing);
 
 
-            System.out.println("Getting new transfers");
+            log.debug("Getting new transfers");
             get(api, Maps.<String, String>newHashMap());
         }
 
-        System.out.println("Done");
+        log.debug("Done");
     }
 
     /**
@@ -80,7 +80,7 @@ public class Downloader {
         do {
             Response<Replication> transfers = balustrade.getReplications(query);
             next = transfers.getNext();
-            System.out.printf("Count: %d\nNext: %s\nPrevious: %s\n",
+            log.debug("Count: {}\nNext: {}\nPrevious: {}\n",
                     transfers.getCount(),
                     transfers.getNext(),
                     transfers.getPrevious());
@@ -101,7 +101,7 @@ public class Downloader {
      * @throws InterruptedException
      */
     private void download(Replication transfer) throws InterruptedException {
-        System.out.printf("Getting %s from %s\n", transfer.getUuid(), transfer.getLink());
+        log.debug("Getting {} from {}\n", transfer.getUuid(), transfer.getLink());
         String[] cmd = new String[]{"rsync", "-aL", "--stats", transfer.getLink(), "/tmp/dpn/"};
         String stats;
 
@@ -114,12 +114,12 @@ public class Downloader {
 
 
             if (exit != 0) {
-                System.out.println("There was an error rsyncing!");
+                log.error("There was an error rsyncing!");
             }
 
             System.out.printf("Rsync stats:\n %s", stats);
         } catch (IOException e) {
-            System.out.println("Error executing rsync");
+            log.error("Error executing rsync");
         }
 
         TimeUnit.SECONDS.sleep(1);
@@ -155,7 +155,7 @@ public class Downloader {
         try {
             hash = Files.hash(file.toFile(), func);
         } catch (IOException e) {
-            System.out.println("Error hashing file");
+            log.error("Error hashing file");
             return;
         }
 
