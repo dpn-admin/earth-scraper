@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * TODO: sop -> log
  *
  * Created by shake on 3/31/15.
  */
@@ -117,7 +116,12 @@ public class Downloader {
         log.debug("Getting {} from {}\n", transfer.getUuid(), transfer.getLink());
         String stage = settings.getStage();
         Path local = Paths.get(stage, transfer.getFromNode());
-        String[] cmd = new String[]{"rsync", "-aL", "--stats", transfer.getLink(), local.toString()};
+        String[] cmd = new String[]{"rsync",
+                "-aL",
+                "-e ssh -o 'PasswordAuthentication no'",
+                "--stats",
+                transfer.getLink(),
+                local.toString()};
         String stats;
 
         ProcessBuilder pb = new ProcessBuilder(cmd);
