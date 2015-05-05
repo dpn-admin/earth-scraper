@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 @EnableScheduling
 public class Downloader {
     private final Logger log = LoggerFactory.getLogger(Downloader.class);
+    private static final String TAG_MANIFEST = "tagmanifest-sha256.txt";
 
     @Autowired
     TransferAPIs transfers;
@@ -59,7 +60,7 @@ public class Downloader {
      * @throws InterruptedException
      */
     @Scheduled(cron = "0 0 * * * *")
-    public void replicate() throws InterruptedException {
+    public void replicate() throws InterruptedException, IOException {
         Map<String, String> ongoing = Maps.newHashMap();
         ongoing.put("status", "A");
         ongoing.put("fixity", "False");
@@ -83,7 +84,7 @@ public class Downloader {
      * @throws InterruptedException
      */
     private void get(BalustradeTransfers balustrade,
-                     Map<String, String> query) throws InterruptedException {
+                     Map<String, String> query) throws InterruptedException, IOException {
         int page = 1;
         String next;
         do {
@@ -95,6 +96,7 @@ public class Downloader {
                     transfers.getPrevious());
             for (Replication transfer : transfers.getResults()) {
                 download(transfer);
+                untar(transfer);
                 update(balustrade, transfer);
             }
 
@@ -117,9 +119,9 @@ public class Downloader {
         String stage = settings.getStage();
         Path local = Paths.get(stage, transfer.getFromNode());
         String[] cmd = new String[]{"rsync",
-                "-aL",
-                "-e ssh -o 'PasswordAuthentication no'",
-                "--stats",
+                "-aL",                                   // archive, follow links
+                "-e ssh -o 'PasswordAuthentication no'", // disable password auth
+                "--stats",                               // print out statistics
                 transfer.getLink(),
                 local.toString()};
         String stats;
@@ -170,7 +172,10 @@ public class Downloader {
         // Get the files digest
         HashFunction func = Hashing.sha256();
         String stage = settings.getStage();
-        Path file = Paths.get(stage, transfer.getFromNode(), transfer.getUuid() + ".tar");
+        Path file = Paths.get(stage,
+                transfer.getFromNode(),
+                transfer.getUuid(),
+                TAG_MANIFEST);
         HashCode hash;
         try {
             hash = Files.hash(file.toFile(), func);
@@ -183,6 +188,8 @@ public class Downloader {
         String receipt = hash.toString();
         transfer.setFixityValue(receipt);
         Replication updated = balustrade.updateReplication(transfer.getReplicationId(), transfer);
+
+        // TODO: Validate the manifests for the bag
 
         if (updated.isFixityAccept()) {
             // push to chronopolis
