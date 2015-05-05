@@ -1,19 +1,21 @@
 package org.chronopolis.earth;
 
-import com.google.common.collect.Maps;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
+import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.NodeAPIs;
+import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.models.Endpoint;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import retrofit.RestAdapter;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -27,18 +29,28 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Created by shake on 11/13/14.
  */
-@ComponentScan
-@EnableAutoConfiguration
+@SpringBootApplication
+@EnableConfigurationProperties
 public class Earth implements CommandLineRunner {
 
     @Autowired
     EarthSettings earthSettings;
+
+    @Autowired
+    TransferAPIs transfers;
+
+    @Autowired
+    NodeAPIs nodes;
+
+    @Autowired
+    BagAPIs bags;
 
     BalustradeTransfers balustrade;
 
@@ -53,6 +65,7 @@ public class Earth implements CommandLineRunner {
         disableCertValidation();
 
         // TODO: Cycle through each and query
+        /*
         EarthSettings.Endpoint firstEndpoint = earthSettings.endpoints.get(0);
         RestAdapter adapter = new RestAdapter.Builder()
                 .setEndpoint(firstEndpoint.getApiRoot())
@@ -61,11 +74,16 @@ public class Earth implements CommandLineRunner {
                 .build();
 
         balustrade = adapter.create(BalustradeTransfers.class);
+        */
 
         ////
         // First we queue any transfers which are incomplete
         // Then we look for new transfers to download
         ////
+        for (BalustradeTransfers transfer : transfers.getApiMap().values()) {
+            transfer.getReplications(new HashMap<String, String>());
+        }
+        /*
         Map<String, String> ongoing = Maps.newHashMap();
         ongoing.put("status", "A");
         ongoing.put("fixity", "False");
@@ -77,6 +95,7 @@ public class Earth implements CommandLineRunner {
         get(Maps.<String, String>newHashMap());
 
         System.out.println("Done");
+        */
     }
 
     private void get(Map<String, String> query) throws InterruptedException {

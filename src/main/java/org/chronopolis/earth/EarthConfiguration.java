@@ -59,9 +59,9 @@ public class EarthConfiguration {
                     .build();
 
             adapters.add(adapter);
-            bagAPIs.add(adapter.create(BalustradeBag.class));
-            nodeAPIs.add(adapter.create(BalustradeNode.class));
-            transferAPIs.add(adapter.create(BalustradeTransfers.class));
+            bagAPIs.put(endpoint.getName(), adapter.create(BalustradeBag.class));
+            nodeAPIs.put(endpoint.getName(), adapter.create(BalustradeNode.class));
+            transferAPIs.put(endpoint.getName(), adapter.create(BalustradeTransfers.class));
         }
 
         return adapters;

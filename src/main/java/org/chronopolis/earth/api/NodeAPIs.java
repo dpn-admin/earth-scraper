@@ -1,21 +1,24 @@
 package org.chronopolis.earth.api;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by shake on 4/27/15.
  */
 public class NodeAPIs {
 
-    public Set<BalustradeNode> apis;
+    private Map<String, BalustradeNode> apiMap;
 
     public NodeAPIs() {
-        this.apis = new HashSet<>();
+        this.apiMap = new HashMap<>();
     }
 
-    public void add(BalustradeNode node) {
-        apis.add(node);
+    public void put(String node, BalustradeNode api) {
+        apiMap.put(node, api);
     }
 
+    public Map<String, BalustradeNode> getApiMap() {
+        return apiMap;
+    }
 }

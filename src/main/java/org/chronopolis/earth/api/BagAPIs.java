@@ -1,6 +1,8 @@
 package org.chronopolis.earth.api;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -8,13 +10,17 @@ import java.util.Set;
  */
 public class BagAPIs {
 
-    public Set<BalustradeBag> apis;
+    private Map<String, BalustradeBag> apiMap;
 
     public BagAPIs() {
-        this.apis = new HashSet<>();
+        this.apiMap = new HashMap<>();
     }
 
-    public void add(BalustradeBag bag) {
-        apis.add(bag);
+    public void put(String node, BalustradeBag bag) {
+        apiMap.put(node, bag);
+    }
+
+    public Map<String, BalustradeBag> getApiMap() {
+        return apiMap;
     }
 }

@@ -1,6 +1,8 @@
 package org.chronopolis.earth.api;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -10,13 +12,17 @@ import java.util.Set;
  */
 public class TransferAPIs {
 
-    public Set<BalustradeTransfers> apis;
+    private Map<String, BalustradeTransfers> apiMap;
 
     public TransferAPIs() {
-        this.apis = new HashSet<>();
+        this.apiMap = new HashMap<>();
     }
 
-    public void add(BalustradeTransfers transfer) {
-        apis.add(transfer);
+    public void put(String node, BalustradeTransfers transfers) {
+        apiMap.put(node, transfers);
+    }
+
+    public Map<String, BalustradeTransfers> getApiMap() {
+        return apiMap;
     }
 }

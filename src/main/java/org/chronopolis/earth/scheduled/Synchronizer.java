@@ -17,12 +17,13 @@ import java.util.Map;
 
 /**
  * TODO: Make sure we only sync items which the remote node is the admin node of
+ * Disabled temporarily
  *
  *
  * Created by shake on 3/31/15.
  */
-@Component
-@EnableScheduling
+// @Component
+// @EnableScheduling
 public class Synchronizer {
 
     @Autowired
@@ -34,7 +35,7 @@ public class Synchronizer {
     @Autowired
     NodeAPIs nodeAPIs;
 
-    @Scheduled(cron="0 55 * * * *")
+    // @Scheduled(cron="0 55 * * * *")
     public void synchronize() {
         syncNode();
         syncBags();
@@ -42,7 +43,8 @@ public class Synchronizer {
     }
 
     private void syncTransfers() {
-        for (BalustradeTransfers api : transferAPIs.apis) {
+        for (String node: transferAPIs.getApiMap().keySet()) {
+            BalustradeTransfers api = transferAPIs.getApiMap().get(node);
             api.getReplications(new HashMap());
             api.getRestores(new HashMap());
         }

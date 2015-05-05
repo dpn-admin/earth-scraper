@@ -64,7 +64,7 @@ public class Downloader {
         ongoing.put("status", "A");
         ongoing.put("fixity", "False");
 
-        for (BalustradeTransfers api : transfers.apis) {
+        for (BalustradeTransfers api : transfers.getApiMap().values()) {
             log.debug("Getting ongoing transfers");
             get(api, ongoing);
 
