@@ -17,13 +17,17 @@ public class EarthSettings {
     List<Endpoint> endpoints = new ArrayList<>();
     String stage;
 
-
     public List<Endpoint> getEndpoints() {
         return endpoints;
     }
 
     public String getStage() {
         return stage;
+    }
+
+    public EarthSettings setStage(String stage) {
+        this.stage = stage;
+        return this;
     }
 
     /*
