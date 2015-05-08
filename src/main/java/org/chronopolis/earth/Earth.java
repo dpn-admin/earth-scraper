@@ -80,10 +80,19 @@ public class Earth implements CommandLineRunner {
         // First we queue any transfers which are incomplete
         // Then we look for new transfers to download
         ////
+
+        boolean done = false;
+        System.out.println("Enter 'q' to quit");
+        while (!done) {
+            if ("q".equalsIgnoreCase(readLine())) {
+                done = true;
+            }
+        }
+
+        /*
         for (BalustradeTransfers transfer : transfers.getApiMap().values()) {
             transfer.getReplications(new HashMap<String, String>());
         }
-        /*
         Map<String, String> ongoing = Maps.newHashMap();
         ongoing.put("status", "A");
         ongoing.put("fixity", "False");
@@ -96,6 +105,15 @@ public class Earth implements CommandLineRunner {
 
         System.out.println("Done");
         */
+    }
+
+    private String readLine() {
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            return reader.readLine();
+        } catch (IOException ex) {
+            throw new RuntimeException("Unable to read STDIN");
+        }
     }
 
     private void get(Map<String, String> query) throws InterruptedException {
