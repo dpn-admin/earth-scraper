@@ -95,6 +95,7 @@ public class Downloader {
                     transfers.getNext(),
                     transfers.getPrevious());
             for (Replication transfer : transfers.getResults()) {
+                log.info("Replicating {}", transfer.getReplicationId());
                 download(transfer);
                 untar(transfer);
                 update(balustrade, transfer);
@@ -114,10 +115,17 @@ public class Downloader {
      * @param transfer
      * @throws InterruptedException
      */
-    private void download(Replication transfer) throws InterruptedException {
+    private void download(Replication transfer) throws InterruptedException, IOException {
         log.debug("Getting {} from {}\n", transfer.getUuid(), transfer.getLink());
         String stage = settings.getStage();
-        Path local = Paths.get(stage, transfer.getFromNode());
+
+        // Create the dir for the node if it doesn't exist
+        Path nodeDir = Paths.get(stage, transfer.getFromNode());
+        if (!nodeDir.toFile().exists()) {
+            java.nio.file.Files.createDirectories(nodeDir);
+        }
+
+        Path local = nodeDir.resolve(transfer.getUuid() + ".tar");
         String[] cmd = new String[]{"rsync",
                 "-aL",                                   // archive, follow links
                 "-e ssh -o 'PasswordAuthentication no'", // disable password auth
@@ -133,9 +141,10 @@ public class Downloader {
 
             stats = stringFromStream(p.getInputStream());
 
-
             if (exit != 0) {
-                log.error("There was an error rsyncing!");
+                log.error("There was an error rsyncing! exit value {}", exit);
+                String error = stringFromStream(p.getErrorStream());
+                log.error(error);
             }
 
             log.debug("Rsync stats:\n {}", stats);
@@ -180,7 +189,7 @@ public class Downloader {
         try {
             hash = Files.hash(file.toFile(), func);
         } catch (IOException e) {
-            log.error("Error hashing file");
+            log.error("Error hashing file", e);
             return;
         }
 
