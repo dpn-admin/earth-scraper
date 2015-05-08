@@ -1,5 +1,8 @@
 package org.chronopolis.earth;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
@@ -7,12 +10,15 @@ import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Endpoint;
+import org.chronopolis.rest.api.IngestAPI;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import retrofit.RestAdapter;
+import retrofit.converter.GsonConverter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,11 +55,17 @@ public class EarthConfiguration {
                                BagAPIs bagAPIs) {
         log.info("Creating adapters");
         List<RestAdapter> adapters = new ArrayList<>();
+        Gson gson = new GsonBuilder()
+                .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+                .registerTypeAdapter(DateTime.class, new DateTimeSerializer())
+                .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
+                .create();
 
         for (Endpoint endpoint : settings.endpoints) {
             log.info("Creating adapter for {}", endpoint.getName());
             RestAdapter adapter = new RestAdapter.Builder()
                     .setEndpoint(endpoint.getApiRoot())
+                    .setConverter(new GsonConverter(gson))
                     .setRequestInterceptor(new TokenInterceptor(endpoint.getAuthKey()))
                     .setLogLevel(RestAdapter.LogLevel.FULL)
                     .build();
@@ -65,6 +77,17 @@ public class EarthConfiguration {
         }
 
         return adapters;
+    }
+
+    @Bean
+    IngestAPI ingestAPI() {
+        RestAdapter adapter = new RestAdapter.Builder()
+                .setEndpoint("http://localhost:8000")
+                // .setRequestInterceptor()
+                .setLogLevel(RestAdapter.LogLevel.FULL)
+                .build();
+
+        return adapter.create(IngestAPI.class);
     }
 
 }
