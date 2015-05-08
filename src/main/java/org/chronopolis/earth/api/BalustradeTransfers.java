@@ -7,6 +7,7 @@ import retrofit.http.Body;
 import retrofit.http.GET;
 import retrofit.http.PATCH;
 import retrofit.http.POST;
+import retrofit.http.PUT;
 import retrofit.http.Path;
 import retrofit.http.QueryMap;
 
@@ -27,7 +28,7 @@ public interface BalustradeTransfers {
     @GET("/api-v1/replicate/{id}/")
     Replication getReplication(@Path("id") String id);
 
-    @POST("/api-v1/replicate/{id}/")
+    @PUT("/api-v1/replicate/{id}/")
     Replication updateReplication(@Path("id") String id, @Body Replication replication);
 
     @PATCH("/api-v1/replicate/{id}/")
@@ -43,7 +44,7 @@ public interface BalustradeTransfers {
     @GET("/api-v1/restore/{id}/")
     Restore getRestore(@Path("id") String id);
 
-    @POST("/api-v1/restore/{id}/")
+    @PUT("/api-v1/restore/{id}/")
     Restore updateRestore(@Path("id") String id, @Body Restore replication);
 
     @PATCH("/api-v1/restore/{id}/")
