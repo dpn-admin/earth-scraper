@@ -59,7 +59,7 @@ public class Downloader {
      *
      * @throws InterruptedException
      */
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "${cron.replicate:0 0 * * * *}")
     public void replicate() throws InterruptedException, IOException {
         Map<String, String> ongoing = Maps.newHashMap();
         ongoing.put("status", "A");
@@ -73,8 +73,6 @@ public class Downloader {
             log.debug("Getting new transfers");
             get(api, Maps.<String, String>newHashMap());
         }
-
-        log.debug("Done");
     }
 
     /**
