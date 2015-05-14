@@ -13,7 +13,6 @@ import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.rest.api.IngestAPI;
-import org.chronopolis.rest.models.IngestRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +28,7 @@ import java.io.RandomAccessFile;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -69,7 +69,6 @@ public class Downloader {
             log.debug("Getting ongoing transfers");
             get(api, ongoing);
 
-
             log.debug("Getting new transfers");
             get(api, Maps.<String, String>newHashMap());
         }
@@ -78,8 +77,10 @@ public class Downloader {
     /**
      * GET our active replications from a dpn node
      *
-     * @param query
+     * @param balustrade dpn api to use for getting replication requests
+     * @param query QueryParameters to use with the dpn api
      * @throws InterruptedException
+     * @throws IOException
      */
     private void get(BalustradeTransfers balustrade,
                      Map<String, String> query) throws InterruptedException, IOException {
@@ -97,11 +98,107 @@ public class Downloader {
                 download(transfer);
                 untar(transfer);
                 update(balustrade, transfer);
+                validate(balustrade, transfer);
+                push(transfer);
             }
 
             ++page;
             query.put("page", String.valueOf(page));
         } while (next != null);
+    }
+
+    private void push(Replication transfer) {
+        if (transfer.isFixityAccept() && transfer.isBagValid()) {
+            log.info("Bag is valid, pushing to chronopolis");
+            // push to chronopolis
+            /*
+            IngestRequest request = new IngestRequest();
+            request.setDepositor(updated.getFromNode());
+            request.setName(updated.getUuid());
+            request.setLocation(updated.getFromNode() + "/" + updated.getUuid());
+            chronopolis.putBag(request);
+            */
+        }
+
+    }
+
+    /**
+     * Validate the manifests for a bag
+     *
+     * Our paths look like:
+     * /staging/area/from_node/bag_uuid/manifest-sha256.txt
+     * /staging/area/from_node/bag_uuid/tagmanifest-sha256.txt
+     *
+     * @param api dpn api to update the replication request
+     * @param transfer the replication request from the dpn api
+     */
+    private void validate(BalustradeTransfers api, Replication transfer) {
+        if (!transfer.isFixityAccept()) {
+            log.info("Fixity not accepted, setting bag as false");
+            transfer.setBagValid(false);
+            return;
+        }
+
+        boolean valid;
+        String uuid = transfer.getUuid();
+        String stage = settings.getStage();
+        String depositor = transfer.getFromNode();
+
+
+        // Read the manifests
+        // TODO: Create named based off of transfer fixity
+        String manifestName = "manifest-sha256.txt";
+        String tagmanifestName = "tagmanifest-sha256.txt";
+
+        Path bag = Paths.get(stage, depositor, uuid);
+        Path manifest = bag.resolve(manifestName);
+        Path tagmanifest = bag.resolve(tagmanifestName);
+
+        valid = validateManifest(uuid, tagmanifest, bag);
+
+        // Just so we don't waste time
+        if (valid) {
+            valid = validateManifest(uuid, manifest, bag);
+        }
+
+        log.info("Bag {} is valid: {}", uuid, valid);
+        transfer.setBagValid(valid);
+        api.updateReplication(transfer.getReplicationId(), transfer);
+
+    }
+
+    private boolean validateManifest(String uuid, Path manifest, Path bag) {
+        String line;
+        boolean valid = true;
+        HashFunction func = Hashing.sha256();
+        Charset cs = Charset.defaultCharset();
+
+        try {
+            BufferedReader br = java.nio.file.Files.newBufferedReader(manifest, cs);
+            while ((line = br.readLine()) != null) {
+                String[] split = line.split("\\s+", 2);
+                if (split.length != 2) {
+                    valid = false;
+                    continue;
+                }
+
+                String digest = split[0];
+                String path = split[1];
+                Path file = bag.resolve(path);
+                log.trace("Processing {}", file);
+
+                HashCode hash = Files.hash(file.toFile(), func);
+                if (!hash.toString().equalsIgnoreCase(digest)) {
+                    log.error("[{}] Bad hash found for file {}", uuid, path);
+                    valid = false;
+                }
+            }
+        } catch (IOException e) {
+            valid = false;
+            log.error("IOException while validating manifest {}", manifest.toString(), e);
+        }
+
+        return valid;
     }
 
     /**
@@ -194,20 +291,8 @@ public class Downloader {
         // Set the receipt
         String receipt = hash.toString();
         transfer.setFixityValue(receipt);
-        Replication updated = balustrade.updateReplication(transfer.getReplicationId(), transfer);
-
-        // TODO: Validate the manifests for the bag
-
-        if (updated.isFixityAccept()) {
-            // push to chronopolis
-            /*
-            IngestRequest request = new IngestRequest();
-            request.setDepositor(updated.getFromNode());
-            request.setName(updated.getUuid());
-            request.setLocation(updated.getFromNode() + "/" + updated.getUuid());
-            chronopolis.putBag(request);
-            */
-        }
+        Replication update = balustrade.updateReplication(transfer.getReplicationId(), transfer);
+        transfer.setFixityAccept(update.isFixityAccept());
     }
 
     /**
