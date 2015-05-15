@@ -62,15 +62,15 @@ public class Downloader {
     @Scheduled(cron = "${cron.replicate:0 0 * * * *}")
     public void replicate() throws InterruptedException, IOException {
         Map<String, String> ongoing = Maps.newHashMap();
-        ongoing.put("status", "A");
-        ongoing.put("fixity", "False");
+        ongoing.put("status", "Received");
 
         for (BalustradeTransfers api : transfers.getApiMap().values()) {
-            log.debug("Getting ongoing transfers");
+            log.debug("Getting received transfers");
             get(api, ongoing);
 
             log.debug("Getting new transfers");
-            get(api, Maps.<String, String>newHashMap());
+            ongoing.put("status", "Requested");
+            get(api, ongoing);
         }
     }
 
@@ -241,6 +241,7 @@ public class Downloader {
                 String error = stringFromStream(p.getErrorStream());
                 log.error(error);
             } else {
+                log.info("rsync successful, updating replication transfer");
                 transfer.setStatus(Replication.Status.RECEIVED);
                 api.updateReplication(transfer.getReplicationId(), transfer);
             }
