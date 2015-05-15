@@ -95,7 +95,7 @@ public class Downloader {
                     transfers.getPrevious());
             for (Replication transfer : transfers.getResults()) {
                 log.info("Replicating {}", transfer.getReplicationId());
-                download(transfer);
+                download(balustrade, transfer);
                 untar(transfer);
                 update(balustrade, transfer);
                 validate(balustrade, transfer);
@@ -210,7 +210,7 @@ public class Downloader {
      * @param transfer
      * @throws InterruptedException
      */
-    private void download(Replication transfer) throws InterruptedException, IOException {
+    private void download(BalustradeTransfers api, Replication transfer) throws InterruptedException, IOException {
         log.debug("Getting {} from {}\n", transfer.getUuid(), transfer.getLink());
         String stage = settings.getStage();
 
@@ -240,6 +240,9 @@ public class Downloader {
                 log.error("There was an error rsyncing! exit value {}", exit);
                 String error = stringFromStream(p.getErrorStream());
                 log.error(error);
+            } else {
+                transfer.setStatus(Replication.Status.RECEIVED);
+                api.updateReplication(transfer.getReplicationId(), transfer);
             }
 
             log.debug("Rsync stats:\n {}", stats);
@@ -247,7 +250,6 @@ public class Downloader {
             log.error("Error executing rsync");
         }
 
-        TimeUnit.SECONDS.sleep(1);
     }
 
     /**
