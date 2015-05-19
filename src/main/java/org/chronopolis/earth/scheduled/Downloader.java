@@ -32,7 +32,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -55,21 +54,21 @@ public class Downloader {
 
 
     /**
-     * Replication ongoing and new transfers from a dpn node
+     * Replicate ongoing and new transfers from a dpn node
      *
      * @throws InterruptedException
      */
     @Scheduled(cron = "${cron.replicate:0 0 * * * *}")
     public void replicate() throws InterruptedException, IOException {
         Map<String, String> ongoing = Maps.newHashMap();
-        ongoing.put("status", "Received");
+        ongoing.put("status", Replication.Status.RECEIVED.getName());
 
         for (BalustradeTransfers api : transfers.getApiMap().values()) {
             log.debug("Getting received transfers");
             get(api, ongoing);
 
             log.debug("Getting new transfers");
-            ongoing.put("status", "Requested");
+            ongoing.put("status", Replication.Status.REQUESTED.getName());
             get(api, ongoing);
         }
     }
@@ -95,11 +94,12 @@ public class Downloader {
                     transfers.getPrevious());
             for (Replication transfer : transfers.getResults()) {
                 log.info("Replicating {}", transfer.getReplicationId());
-                download(balustrade, transfer);
-                untar(transfer);
-                update(balustrade, transfer);
-                validate(balustrade, transfer);
-                push(transfer);
+                download(balustrade, transfer); // Requested
+                untar(transfer);                // Received
+                update(balustrade, transfer);   // Received
+                validate(balustrade, transfer); // Confirmed
+                push(transfer);                 // Confirmed
+                // Still needed: Confirmed -> Stored
             }
 
             ++page;
@@ -271,7 +271,7 @@ public class Downloader {
     }
 
     /**
-     * Digest a file and update the api
+     * Digest the tagmanifest and update the api
      *
      * @param transfer
      */

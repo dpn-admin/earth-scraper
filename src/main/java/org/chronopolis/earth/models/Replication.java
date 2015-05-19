@@ -3,6 +3,8 @@ package org.chronopolis.earth.models;
 import org.joda.time.DateTime;
 
 /**
+ * Representation of a replication transfer in the DPN REST api
+ *
  * Created by shake on 3/2/15.
  */
 public class Replication {
@@ -153,7 +155,17 @@ public class Replication {
 
 
     public enum Status {
-        REQUESTED, REJECTED, RECEIVED, CONFIRMED, STORED, CANCELLED
+        REQUESTED("Requested"), REJECTED("Rejected"), RECEIVED("Received"), CONFIRMED("Confirmed"), STORED("Stored"), CANCELLED("Cancelled");
+
+        private final String name;
+
+        Status(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
     }
 
 }
