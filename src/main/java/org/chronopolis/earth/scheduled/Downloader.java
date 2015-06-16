@@ -48,6 +48,7 @@ import java.util.Map;
 public class Downloader {
     private final Logger log = LoggerFactory.getLogger(Downloader.class);
     private static final String TAG_MANIFEST = "tagmanifest-sha256.txt";
+    private static final String MANIFEST = "manifest-sha256.txt";
 
     @Autowired
     TransferAPIs apis;
@@ -304,13 +305,10 @@ public class Downloader {
 
 
         // Read the manifests
-        // TODO: Create named based off of transfer fixity
-        String manifestName = "manifest-sha256.txt";
-        String tagmanifestName = "tagmanifest-sha256.txt";
-
         Path bag = Paths.get(stage, depositor, uuid);
-        Path manifest = bag.resolve(manifestName);
-        Path tagmanifest = bag.resolve(tagmanifestName);
+        // TODO: Resolve named based off of transfer fixity
+        Path manifest = bag.resolve(MANIFEST);
+        Path tagmanifest = bag.resolve(TAG_MANIFEST);
 
         valid = validateManifest(uuid, tagmanifest, bag);
 
