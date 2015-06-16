@@ -13,6 +13,7 @@ import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.rest.api.IngestAPI;
+import org.chronopolis.rest.models.Bag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,9 @@ import java.nio.file.Paths;
 import java.util.Map;
 
 /**
+ * TODO: Find a better way to query each api/grab replication transfers
+ *       The current has mucho code duplication
+ *
  *
  * Created by shake on 3/31/15.
  */
@@ -44,7 +48,7 @@ public class Downloader {
     private static final String TAG_MANIFEST = "tagmanifest-sha256.txt";
 
     @Autowired
-    TransferAPIs transfers;
+    TransferAPIs apis;
 
     @Autowired
     IngestAPI chronopolis;
@@ -58,12 +62,12 @@ public class Downloader {
      *
      * @throws InterruptedException
      */
-    @Scheduled(cron = "${cron.replicate:0 0 * * * *}")
+    // @Scheduled(cron = "${cron.replicate:0 0 * * * *}")
     public void replicate() throws InterruptedException, IOException {
         Map<String, String> ongoing = Maps.newHashMap();
         ongoing.put("status", Replication.Status.RECEIVED.getName());
 
-        for (BalustradeTransfers api : transfers.getApiMap().values()) {
+        for (BalustradeTransfers api : apis.getApiMap().values()) {
             log.debug("Getting received transfers");
             get(api, ongoing);
 
@@ -72,6 +76,139 @@ public class Downloader {
             get(api, ongoing);
         }
     }
+
+    private Response<Replication> getTransfers(BalustradeTransfers balustrade,
+                                           Map<String, String> params) {
+        Response<Replication> transfers = balustrade.getReplications(params);
+        log.debug("Count: {}\nNext: {}\nPrevious: {}",
+                transfers.getCount(),
+                transfers.getNext(),
+                transfers.getPrevious());
+        return transfers;
+    }
+
+    @Scheduled(cron = "${cron.replicate:0 * * * * *}")
+    private void requested() {
+        int page = 1;
+        int pageSize = 10;
+        Replication.Status status = Replication.Status.REQUESTED;
+
+        Response<Replication> transfers;
+        Map<String, String> params = Maps.newHashMap();
+        params.put("status", status.getName());
+        params.put("page_size", String.valueOf(pageSize));
+
+        for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
+            String node = entry.getKey();
+            BalustradeTransfers api = entry.getValue();
+            log.info("Getting {} replications from {}", status.getName(), node);
+            do {
+                params.put("page", String.valueOf(page));
+                transfers = getTransfers(api, params);
+                for (Replication transfer : transfers.getResults()) {
+                    String from = transfer.getFromNode();
+                    String uuid = transfer.getUuid();
+                    log.info("Downloading");
+
+                    try {
+                        download(api, transfer);
+                    } catch (InterruptedException | IOException e) {
+                        log.error("Error downloading {}::{}, skipping", from, uuid, e);
+                    }
+                }
+
+                ++page;
+            } while (transfers.getNext() != null);
+
+        }
+
+    }
+
+    @Scheduled(cron = "${cron.replicate:0 * * * * *}")
+    private void received() {
+        int page = 1;
+        int pageSize = 10;
+        Replication.Status status = Replication.Status.RECEIVED;
+
+        Response<Replication> transfers;
+        Map<String, String> params = Maps.newHashMap();
+        params.put("status", status.getName());
+        params.put("page_size", String.valueOf(pageSize));
+
+
+        do {
+            params.put("page", String.valueOf(page));
+            transfers = getTransfers(null, params);
+            for (Replication transfer : transfers.getResults()) {
+                String from = transfer.getFromNode();
+                String uuid = transfer.getUuid();
+
+                try {
+                    untar(transfer);
+                    update(null, transfer);
+                } catch (IOException e) {
+                    log.error("Error untarring {}::{}, skipping", from, uuid, e);
+                }
+            }
+
+            ++page;
+        } while (transfers.getNext() != null);
+    }
+
+    @Scheduled(cron = "${cron.replicate:0 * * * * *}")
+    private void confirmed() {
+        int page = 1;
+        int pageSize = 10;
+        Replication.Status status = Replication.Status.CONFIRMED;
+
+        Response<Replication> transfers;
+        Map<String, String> params = Maps.newHashMap();
+        params.put("status", status.getName());
+        params.put("page_size", String.valueOf(pageSize));
+        params.put("order_by", "updated_on");
+
+
+        do {
+            params.put("page", String.valueOf(page));
+            transfers = getTransfers(null, params);
+            for (Replication transfer : transfers.getResults()) {
+                // TODO: Exit when we get past a certain update time
+                if (transfer.getStatus() == Replication.Status.STORED) {
+                    continue;
+                }
+
+                String from = transfer.getFromNode();
+                String uuid = transfer.getUuid();
+
+                Map<String, Object> chronParams = Maps.newHashMap();
+                chronParams.put("name", uuid);
+
+                // TODO: Query parameters for bag
+                // Since bags are named by uuids, this should be unique
+                Bag b = chronopolis.getBags(chronParams)
+                        .getContent()
+                        .get(0);
+
+                if (b != null) {
+                    if (b.getReplicatingNodes().size() == b.getRequiredReplications()) {
+                        store(null, transfer);
+                    }
+                } else {
+                    validate(null, transfer);
+                    push(transfer);
+                }
+            }
+
+            ++page;
+        } while (transfers.getNext() != null);
+    }
+
+    @Scheduled(cron = "${cron.replicate:0 * * * * *}")
+    private void store(BalustradeTransfers api, Replication transfer) {
+        transfer.setStatus(Replication.Status.STORED);
+        api.updateReplication(transfer.getReplicationId(), transfer);
+    }
+
 
     /**
      * GET our active replications from a dpn node
@@ -271,7 +408,7 @@ public class Downloader {
     }
 
     /**
-     * Digest the tagmanifest and update the api
+     * Digest the tarball and update the api
      *
      * @param transfer
      */
@@ -281,8 +418,7 @@ public class Downloader {
         String stage = settings.getStage();
         Path file = Paths.get(stage,
                 transfer.getFromNode(),
-                transfer.getUuid(),
-                TAG_MANIFEST);
+                transfer.getUuid() + ".tar");
         HashCode hash;
         try {
             hash = Files.hash(file.toFile(), func);
