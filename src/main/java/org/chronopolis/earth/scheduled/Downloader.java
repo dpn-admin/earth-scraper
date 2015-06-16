@@ -14,6 +14,7 @@ import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.rest.api.IngestAPI;
 import org.chronopolis.rest.models.Bag;
+import org.chronopolis.rest.models.IngestRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,11 +33,12 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 
 /**
  * TODO: Find a better way to query each api/grab replication transfers
- *       The current has mucho code duplication
+ * The current has mucho code duplication
  *
  *
  * Created by shake on 3/31/15.
@@ -78,7 +80,7 @@ public class Downloader {
     }
 
     private Response<Replication> getTransfers(BalustradeTransfers balustrade,
-                                           Map<String, String> params) {
+                                               Map<String, String> params) {
         Response<Replication> transfers = balustrade.getReplications(params);
         log.debug("Count: {}\nNext: {}\nPrevious: {}",
                 transfers.getCount(),
@@ -86,6 +88,8 @@ public class Downloader {
                 transfers.getPrevious());
         return transfers;
     }
+
+    // Scheduled tasks. Delegate to functions based on what state the replication is in
 
     @Scheduled(cron = "${cron.replicate:0 * * * * *}")
     private void requested() {
@@ -135,24 +139,29 @@ public class Downloader {
         params.put("status", status.getName());
         params.put("page_size", String.valueOf(pageSize));
 
+        for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
+            String node = entry.getKey();
+            BalustradeTransfers api = entry.getValue();
+            log.info("Getting {} replications from {}", status.getName(), node);
+            do {
+                params.put("page", String.valueOf(page));
+                transfers = getTransfers(api, params);
+                for (Replication transfer : transfers.getResults()) {
+                    String from = transfer.getFromNode();
+                    String uuid = transfer.getUuid();
 
-        do {
-            params.put("page", String.valueOf(page));
-            transfers = getTransfers(null, params);
-            for (Replication transfer : transfers.getResults()) {
-                String from = transfer.getFromNode();
-                String uuid = transfer.getUuid();
-
-                try {
-                    untar(transfer);
-                    update(null, transfer);
-                } catch (IOException e) {
-                    log.error("Error untarring {}::{}, skipping", from, uuid, e);
+                    try {
+                        untar(transfer);
+                        update(api, transfer);
+                    } catch (IOException e) {
+                        log.error("Error untarring {}::{}, skipping", from, uuid, e);
+                    }
                 }
-            }
 
-            ++page;
-        } while (transfers.getNext() != null);
+                ++page;
+            } while (transfers.getNext() != null);
+
+        }
     }
 
     @Scheduled(cron = "${cron.replicate:0 * * * * *}")
@@ -167,43 +176,56 @@ public class Downloader {
         params.put("page_size", String.valueOf(pageSize));
         params.put("order_by", "updated_on");
 
+        for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
+            String node = entry.getKey();
+            BalustradeTransfers api = entry.getValue();
+            log.info("Getting {} replications from {}", status.getName(), node);
 
-        do {
-            params.put("page", String.valueOf(page));
-            transfers = getTransfers(null, params);
-            for (Replication transfer : transfers.getResults()) {
-                // TODO: Exit when we get past a certain update time
-                if (transfer.getStatus() == Replication.Status.STORED) {
-                    continue;
-                }
-
-                String from = transfer.getFromNode();
-                String uuid = transfer.getUuid();
-
-                Map<String, Object> chronParams = Maps.newHashMap();
-                chronParams.put("name", uuid);
-
-                // TODO: Query parameters for bag
-                // Since bags are named by uuids, this should be unique
-                Bag b = chronopolis.getBags(chronParams)
-                        .getContent()
-                        .get(0);
-
-                if (b != null) {
-                    if (b.getReplicatingNodes().size() == b.getRequiredReplications()) {
-                        store(null, transfer);
+            do {
+                params.put("page", String.valueOf(page));
+                transfers = getTransfers(api, params);
+                for (Replication transfer : transfers.getResults()) {
+                    // TODO: Exit when we get past a certain update time
+                    if (transfer.getStatus() == Replication.Status.STORED) {
+                        continue;
                     }
-                } else {
-                    validate(null, transfer);
-                    push(transfer);
-                }
-            }
 
-            ++page;
-        } while (transfers.getNext() != null);
+                    String from = transfer.getFromNode();
+                    String uuid = transfer.getUuid();
+
+                    Map<String, Object> chronParams = Maps.newHashMap();
+                    chronParams.put("name", uuid);
+
+                    // TODO: Query parameters for bag
+                    // Since bags are named by uuids, this should be unique
+                    // but it's still a list so we get that and check if it's empty
+                    List<Bag> bags = chronopolis.getBags(chronParams)
+                            .getContent();
+
+                    if (!bags.isEmpty()) {
+                        Bag b = bags.get(0);
+                        if (b.getReplicatingNodes().size() == b.getRequiredReplications()) {
+                            store(api, transfer);
+                        }
+                    } else {
+                        validate(api, transfer);
+                        push(transfer);
+                    }
+                }
+
+                ++page;
+            } while (transfers.getNext() != null);
+        }
     }
 
-    @Scheduled(cron = "${cron.replicate:0 * * * * *}")
+    // Operations
+
+    /**
+     * Update a replication to note completion of ingestion into chronopolis
+     *
+     * @param api
+     * @param transfer
+     */
     private void store(BalustradeTransfers api, Replication transfer) {
         transfer.setStatus(Replication.Status.STORED);
         api.updateReplication(transfer.getReplicationId(), transfer);
@@ -214,10 +236,11 @@ public class Downloader {
      * GET our active replications from a dpn node
      *
      * @param balustrade dpn api to use for getting replication requests
-     * @param query QueryParameters to use with the dpn api
+     * @param query      QueryParameters to use with the dpn api
      * @throws InterruptedException
      * @throws IOException
      */
+    @Deprecated
     private void get(BalustradeTransfers balustrade,
                      Map<String, String> query) throws InterruptedException, IOException {
         int page = 1;
@@ -248,25 +271,23 @@ public class Downloader {
         if (transfer.isFixityAccept() && transfer.isBagValid()) {
             log.info("Bag is valid, pushing to chronopolis");
             // push to chronopolis
-            /*
             IngestRequest request = new IngestRequest();
-            request.setDepositor(updated.getFromNode());
-            request.setName(updated.getUuid());
-            request.setLocation(updated.getFromNode() + "/" + updated.getUuid());
-            chronopolis.putBag(request);
-            */
+            request.setDepositor(transfer.getFromNode());
+            request.setName(transfer.getUuid());
+            request.setLocation(transfer.getFromNode() + "/" + transfer.getUuid());
+            chronopolis.stageBag(request);
         }
 
     }
 
     /**
      * Validate the manifests for a bag
-     *
+     * <p/>
      * Our paths look like:
      * /staging/area/from_node/bag_uuid/manifest-sha256.txt
      * /staging/area/from_node/bag_uuid/tagmanifest-sha256.txt
      *
-     * @param api dpn api to update the replication request
+     * @param api      dpn api to update the replication request
      * @param transfer the replication request from the dpn api
      */
     private void validate(BalustradeTransfers api, Replication transfer) {
@@ -304,6 +325,14 @@ public class Downloader {
 
     }
 
+    /**
+     * Read a manifest and validate that the entries in it are correct
+     *
+     * @param uuid     the uuid of the bag
+     * @param manifest the manifest to validate
+     * @param bag      the path to the bag
+     * @return
+     */
     private boolean validateManifest(String uuid, Path manifest, Path bag) {
         String line;
         boolean valid = true;
@@ -340,7 +369,7 @@ public class Downloader {
 
     /**
      * Download a bag from a dpn node with rsync
-     *
+     * <p/>
      * Configured so that our final download location looks like:
      * /staging/area/from_node/bag_uuid
      *
