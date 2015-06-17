@@ -14,6 +14,7 @@ import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.rest.api.IngestAPI;
 import org.chronopolis.rest.models.Bag;
+import org.chronopolis.rest.models.BagStatus;
 import org.chronopolis.rest.models.IngestRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -185,10 +186,12 @@ public class Downloader {
 
                     if (!bags.isEmpty()) {
                         Bag b = bags.get(0);
-                        if (b.getReplicatingNodes().size() == b.getRequiredReplications()) {
+                        log.info("Bag found in chronopolis, status is {}", b.getStatus());
+                        if (b.getStatus() == BagStatus.REPLICATED) {
                             store(api, transfer);
                         }
                     } else {
+                        log.info("Bag not found in chronopolis, validating and pushing");
                         validate(api, transfer);
                         push(transfer);
                     }
