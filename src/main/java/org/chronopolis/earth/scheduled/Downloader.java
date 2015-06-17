@@ -60,26 +60,6 @@ public class Downloader {
     EarthSettings settings;
 
 
-    /**
-     * Replicate ongoing and new transfers from a dpn node
-     *
-     * @throws InterruptedException
-     */
-    // @Scheduled(cron = "${cron.replicate:0 0 * * * *}")
-    public void replicate() throws InterruptedException, IOException {
-        Map<String, String> ongoing = Maps.newHashMap();
-        ongoing.put("status", Replication.Status.RECEIVED.getName());
-
-        for (BalustradeTransfers api : apis.getApiMap().values()) {
-            log.debug("Getting received transfers");
-            get(api, ongoing);
-
-            log.debug("Getting new transfers");
-            ongoing.put("status", Replication.Status.REQUESTED.getName());
-            get(api, ongoing);
-        }
-    }
-
     private Response<Replication> getTransfers(BalustradeTransfers balustrade,
                                                Map<String, String> params) {
         Response<Replication> transfers = balustrade.getReplications(params);
@@ -187,7 +167,7 @@ public class Downloader {
                 transfers = getTransfers(api, params);
                 for (Replication transfer : transfers.getResults()) {
                     // TODO: Exit when we get past a certain update time
-                    if (transfer.getStatus() == Replication.Status.STORED) {
+                    if (transfer.status() == Replication.Status.STORED) {
                         continue;
                     }
 
@@ -234,40 +214,11 @@ public class Downloader {
 
 
     /**
-     * GET our active replications from a dpn node
+     * Notify our Chronopolis ingest server that a bag can be replicated
+     * in to Chronopolis
      *
-     * @param balustrade dpn api to use for getting replication requests
-     * @param query      QueryParameters to use with the dpn api
-     * @throws InterruptedException
-     * @throws IOException
+     * @param transfer
      */
-    @Deprecated
-    private void get(BalustradeTransfers balustrade,
-                     Map<String, String> query) throws InterruptedException, IOException {
-        int page = 1;
-        String next;
-        do {
-            Response<Replication> transfers = balustrade.getReplications(query);
-            next = transfers.getNext();
-            log.debug("Count: {}\nNext: {}\nPrevious: {}\n",
-                    transfers.getCount(),
-                    transfers.getNext(),
-                    transfers.getPrevious());
-            for (Replication transfer : transfers.getResults()) {
-                log.info("Replicating {}", transfer.getReplicationId());
-                download(balustrade, transfer); // Requested
-                untar(transfer);                // Received
-                update(balustrade, transfer);   // Received
-                validate(balustrade, transfer); // Confirmed
-                push(transfer);                 // Confirmed
-                // Still needed: Confirmed -> Stored
-            }
-
-            ++page;
-            query.put("page", String.valueOf(page));
-        } while (next != null);
-    }
-
     private void push(Replication transfer) {
         if (transfer.isFixityAccept() && transfer.isBagValid()) {
             log.info("Bag is valid, pushing to chronopolis");

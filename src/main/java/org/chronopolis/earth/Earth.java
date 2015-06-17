@@ -8,7 +8,6 @@ import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
-import org.chronopolis.earth.models.Endpoint;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +28,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 

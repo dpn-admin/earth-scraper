@@ -10,6 +10,7 @@ import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Endpoint;
+import org.chronopolis.earth.models.Replication;
 import org.chronopolis.rest.api.IngestAPI;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -59,6 +60,7 @@ public class EarthConfiguration {
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                 .registerTypeAdapter(DateTime.class, new DateTimeSerializer())
                 .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
+                .registerTypeAdapter(Replication.Status.class, new ReplicationStatusSerializer())
                 .create();
 
         for (Endpoint endpoint : settings.endpoints) {

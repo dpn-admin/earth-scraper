@@ -18,11 +18,11 @@ public class Replication {
     String fixityValue;
     boolean fixityAccept;
     boolean bagValid;
-    Status status;
     String protocol;
     String link;
     DateTime createdAt;
     DateTime updatedAt;
+    Status status;
 
     public Replication() {
     }
@@ -63,7 +63,7 @@ public class Replication {
         return this;
     }
 
-    public Status getStatus() {
+    public Status status() {
         return status;
     }
 
