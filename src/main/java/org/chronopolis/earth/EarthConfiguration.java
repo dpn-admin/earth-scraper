@@ -85,7 +85,7 @@ public class EarthConfiguration {
     IngestAPI ingestAPI() {
         RestAdapter adapter = new RestAdapter.Builder()
                 .setEndpoint("http://localhost:8000")
-                // .setRequestInterceptor()
+                .setRequestInterceptor(new CredentialRequestInterceptor("admin", "admin"))
                 .setLogLevel(RestAdapter.LogLevel.FULL)
                 .build();
 
