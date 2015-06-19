@@ -1,20 +1,24 @@
 package org.chronopolis.earth.scheduled;
 
-import com.google.common.collect.Maps;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
 import org.chronopolis.earth.EarthSettings;
-import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Replication;
-import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.util.BagVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * Clean up any used resources which no longer need to be held
@@ -32,19 +36,25 @@ public class Cleaner {
     @Autowired
     TransferAPIs transferAPIs;
 
+    @Scheduled(cron = "*/30 * * * * *")
     void clean() {
-        int page = 1;
-        int pageSize = 10;
-        Map<String, String> params = Maps.newHashMap();
-        params.put("status", Replication.Status.CANCELLED.getName());
-        params.put("page", String.valueOf(page));
-        params.put("page_size", String.valueOf(pageSize));
-        params.put("order_by", "updated_at");
+        Path stage = Paths.get(settings.getStage());
+        BagVisitor visitor = new BagVisitor(transferAPIs);
+        Set<FileVisitOption> options =
+                ImmutableSet.of(FileVisitOption.FOLLOW_LINKS);
 
-        for (BalustradeTransfers api: transferAPIs.getApiMap().values()) {
-            Response<Replication> replications = api.getReplications(params);
+        try {
+            Files.walkFileTree(stage, options, 2, visitor);
+            Multimap<String, Path> bags = visitor.getBags();
+            for (String node : bags.keySet()) {
+                for (Path path : bags.get(node)) {
+                    log.info("[{}] Removing directory for {}", node, path.getFileName());
+                }
+            }
+
+        } catch (IOException e) {
+            log.error("", e);
         }
-
     }
 
     private void clean(Replication replication) {
