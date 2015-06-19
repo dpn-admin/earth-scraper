@@ -155,12 +155,36 @@ public class Replication {
 
 
     public enum Status {
-        REQUESTED("Requested"), REJECTED("Rejected"), RECEIVED("Received"), CONFIRMED("Confirmed"), STORED("Stored"), CANCELLED("Cancelled");
+        REQUESTED("Requested"),
+        REJECTED("Rejected"),
+        RECEIVED("Received"),
+        CONFIRMED("Confirmed"),
+        STORED("Stored"),
+        CANCELLED("Cancelled"),
+        UNKNOWN("Unknown");
 
         private final String name;
 
         Status(String name) {
             this.name = name;
+        }
+
+        public static Status fromString(String status) {
+            if (status.equalsIgnoreCase("Requested")) {
+                return REQUESTED;
+            } else if (status.equalsIgnoreCase("Rejected")) {
+                return REJECTED;
+            } else if (status.equalsIgnoreCase("Received")) {
+                return RECEIVED;
+            } else if (status.equalsIgnoreCase("Confirmed")) {
+                return CONFIRMED;
+            } else if (status.equalsIgnoreCase("Stored")) {
+                return STORED;
+            } else if (status.equalsIgnoreCase("Cancelled")) {
+                return CANCELLED;
+            }
+
+            return UNKNOWN;
         }
 
         public String getName() {

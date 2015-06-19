@@ -61,6 +61,7 @@ public class EarthConfiguration {
                 .registerTypeAdapter(DateTime.class, new DateTimeSerializer())
                 .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
                 .registerTypeAdapter(Replication.Status.class, new ReplicationStatusSerializer())
+                .registerTypeAdapter(Replication.Status.class, new ReplicationStatusDeserializer())
                 .create();
 
         for (Endpoint endpoint : settings.endpoints) {
@@ -86,7 +87,7 @@ public class EarthConfiguration {
         RestAdapter adapter = new RestAdapter.Builder()
                 .setEndpoint("http://localhost:8000")
                 .setRequestInterceptor(new CredentialRequestInterceptor("admin", "admin"))
-                .setLogLevel(RestAdapter.LogLevel.FULL)
+                // .setLogLevel(RestAdapter.LogLevel.FULL)
                 .build();
 
         return adapter.create(IngestAPI.class);
