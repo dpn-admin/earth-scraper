@@ -86,7 +86,7 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
             return false;
         }
 
-        boolean terminal = true;
+        boolean terminal;
         ImmutableMap<String, String> params =
                 ImmutableMap.of("uuid",     path.getFileName().toString(),
                                 "order_by", "updated_at");

@@ -11,6 +11,10 @@ import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Endpoint;
 import org.chronopolis.earth.models.Replication;
+import org.chronopolis.earth.serializers.DateTimeDeserializer;
+import org.chronopolis.earth.serializers.DateTimeSerializer;
+import org.chronopolis.earth.serializers.ReplicationStatusDeserializer;
+import org.chronopolis.earth.serializers.ReplicationStatusSerializer;
 import org.chronopolis.rest.api.IngestAPI;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -84,6 +88,7 @@ public class EarthConfiguration {
 
     @Bean
     IngestAPI ingestAPI() {
+        // TODO: Get credentials
         RestAdapter adapter = new RestAdapter.Builder()
                 .setEndpoint("http://localhost:8000")
                 .setRequestInterceptor(new CredentialRequestInterceptor("admin", "admin"))

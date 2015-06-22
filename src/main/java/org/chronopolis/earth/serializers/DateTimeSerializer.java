@@ -1,4 +1,4 @@
-package org.chronopolis.earth;
+package org.chronopolis.earth.serializers;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
