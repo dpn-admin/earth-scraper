@@ -10,6 +10,7 @@ import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Endpoint;
+import org.chronopolis.earth.models.Ingest;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.serializers.DateTimeDeserializer;
 import org.chronopolis.earth.serializers.DateTimeSerializer;
@@ -88,6 +89,8 @@ public class EarthConfiguration {
 
     @Bean
     IngestAPI ingestAPI() {
+        Ingest api = settings.getIngest();
+        log.info("Using api value of {} for ingest server", api.getEndpoint());
         // TODO: Get credentials
         RestAdapter adapter = new RestAdapter.Builder()
                 .setEndpoint("http://localhost:8000")

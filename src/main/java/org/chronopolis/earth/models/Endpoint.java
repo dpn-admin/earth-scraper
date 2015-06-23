@@ -2,6 +2,8 @@ package org.chronopolis.earth.models;
 
 
 /**
+ * DPN REST Endpoint information
+ *
  * Created by shake on 4/27/15.
  */
 public class Endpoint {

@@ -1,6 +1,7 @@
 package org.chronopolis.earth;
 
 import org.chronopolis.earth.models.Endpoint;
+import org.chronopolis.earth.models.Ingest;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -14,8 +15,9 @@ import java.util.List;
 @ConfigurationProperties(prefix = "earth")
 public class EarthSettings {
 
-    List<Endpoint> endpoints = new ArrayList<>();
     String stage;
+    Ingest ingest;
+    List<Endpoint> endpoints = new ArrayList<>();
 
     public List<Endpoint> getEndpoints() {
         return endpoints;
@@ -27,6 +29,15 @@ public class EarthSettings {
 
     public EarthSettings setStage(String stage) {
         this.stage = stage;
+        return this;
+    }
+
+    public Ingest getIngest() {
+        return ingest;
+    }
+
+    public EarthSettings setIngest(Ingest ingest) {
+        this.ingest = ingest;
         return this;
     }
 
