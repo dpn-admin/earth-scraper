@@ -3,6 +3,8 @@ package org.chronopolis.earth.models;
 import java.util.List;
 
 /**
+ * A response object from the DPN REST API
+ *
  * Created by shake on 3/2/15.
  */
 public class Response<E> {

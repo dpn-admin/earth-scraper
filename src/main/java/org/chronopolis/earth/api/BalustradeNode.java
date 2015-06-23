@@ -9,6 +9,8 @@ import retrofit.http.QueryMap;
 import java.util.Map;
 
 /**
+ * DPN API for operations on Nodes
+ *
  * Created by shake on 3/27/15.
  */
 public interface BalustradeNode {

@@ -3,6 +3,8 @@ package org.chronopolis.earth.models;
 import org.joda.time.DateTime;
 
 /**
+ * Restore request from the DPN API
+ *
  * Created by shake on 3/27/15.
  */
 public class Restore {

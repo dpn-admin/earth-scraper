@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * Encapsulation for {@link BalustradeNode} apis and the associated node
+ *
  * Created by shake on 4/27/15.
  */
 public class NodeAPIs {

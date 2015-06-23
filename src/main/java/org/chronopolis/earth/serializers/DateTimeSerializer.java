@@ -11,6 +11,8 @@ import org.joda.time.format.ISODateTimeFormat;
 import java.lang.reflect.Type;
 
 /**
+ * GSON serializer for DateTime objects
+ *
  * Created by shake on 5/7/15.
  */
 public class DateTimeSerializer implements JsonSerializer<DateTime> {

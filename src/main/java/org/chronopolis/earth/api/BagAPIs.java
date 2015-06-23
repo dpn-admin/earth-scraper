@@ -1,11 +1,11 @@
 package org.chronopolis.earth.api;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
+ * Encapsulation for {@link BalustradeBag} apis and the associated node
+ *
  * Created by shake on 4/27/15.
  */
 public class BagAPIs {

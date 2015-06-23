@@ -13,6 +13,8 @@ import java.util.Map;
 
 
 /**
+ * DPN API for CRUD operations on bags
+ *
  * TODO: May be able to inject api version into the interface w/ spring
  *
  * Created by shake on 3/27/15.

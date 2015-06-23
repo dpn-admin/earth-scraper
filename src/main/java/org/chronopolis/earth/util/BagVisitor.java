@@ -27,6 +27,7 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
     private final int DEPTH_NODE = 1;
     private final int DEPTH_BAG = 2;
 
+    // Keep track of both how deep we currently are and which API endpoint to use
     private int depth;
     private BalustradeTransfers current;
 
@@ -81,6 +82,14 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
         return FileVisitResult.CONTINUE;
     }
 
+    /**
+     * Determine if a Bag is in a terminal state. In order to do so we query
+     * the bag's admin node to get associated replications. We then check
+     * against the status to see if we are done with any transfers of the bag.
+     *
+     * @param path
+     * @return true if we are finished replicating, false otherwise
+     */
     private boolean stateIsTerminal(Path path) {
         if (current == null) {
             return false;

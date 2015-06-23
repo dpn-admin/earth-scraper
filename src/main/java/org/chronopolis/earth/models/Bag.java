@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * Representation of a DPN bag
+ *
  * Created by shake on 3/27/15.
  */
 public class Bag {

@@ -93,8 +93,10 @@ public class EarthConfiguration {
         log.info("Using api value of {} for ingest server", api.getEndpoint());
         // TODO: Get credentials
         RestAdapter adapter = new RestAdapter.Builder()
-                .setEndpoint("http://localhost:8000")
-                .setRequestInterceptor(new CredentialRequestInterceptor("admin", "admin"))
+                .setEndpoint(api.getEndpoint())
+                .setRequestInterceptor(new CredentialRequestInterceptor(
+                        api.getUsername(),
+                        api.getPassword()))
                 // .setLogLevel(RestAdapter.LogLevel.FULL)
                 .build();
 

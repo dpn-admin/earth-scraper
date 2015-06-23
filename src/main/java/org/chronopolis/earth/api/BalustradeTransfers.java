@@ -14,6 +14,8 @@ import retrofit.http.QueryMap;
 import java.util.Map;
 
 /**
+ * DPN API for CRUD operations on {@link Replication} and {@link Restore} objects
+ *
  * Created by shake on 3/2/15.
  */
 public interface BalustradeTransfers {

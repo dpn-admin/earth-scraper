@@ -5,6 +5,8 @@ import org.joda.time.DateTime;
 import java.util.List;
 
 /**
+ * Node representation for DPN
+ *
  * Created by shake on 3/27/15.
  */
 public class Node {

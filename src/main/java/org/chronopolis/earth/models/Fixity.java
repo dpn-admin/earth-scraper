@@ -3,6 +3,8 @@ package org.chronopolis.earth.models;
 import org.joda.time.DateTime;
 
 /**
+ * Fixity encapsulation for DPN
+ *
  * Created by shake on 5/1/15.
  */
 public class Fixity {

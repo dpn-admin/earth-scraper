@@ -1,9 +1,7 @@
 package org.chronopolis.earth.api;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Needed because spring refuses to autowire sets with generics
