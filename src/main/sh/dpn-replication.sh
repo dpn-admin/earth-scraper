@@ -21,6 +21,10 @@ JAVA_BIN=/usr/bin/java
 JAVA_CMD="$JAVA_BIN -jar $REPL_JAR"
 PARAMS="--spring.config.location=$SPRING_CONFIG_LOCATION &"
 
+# For whatever reason I've been having issues getting the location set
+# through the parameters, so set an environmental variable just in case o_O
+ENV="SPRING_CONFIG_LOCATION=$SPRING_CONFIG_LOCATION"
+
 . /etc/init.d/functions
 
 RETVAL=0
@@ -29,7 +33,7 @@ COUNTDOWN=1
 case "$1" in
     start)
     echo "Starting the dpn replication service"
-    daemon --user "$CHRON_USER" --pidfile "$REPL_PID_FILE" $JAVA_CMD $PARAMS > /dev/null 2>&1
+    daemon --user "$CHRON_USER" --pidfile "$REPL_PID_FILE" $ENV $JAVA_CMD $PARAMS > /dev/null 2>&1
     RETVAL=$?
 
     echo "Waiting for startup to complete..."
@@ -67,14 +71,14 @@ case "$1" in
     ;;
     stop)
     echo "Stopping the dpn replication service"
-    killproc replication
+    killproc dpn-replication
     ;;
     restart)
     $0 stop
     $0 start
     ;;
     status)
-        status replication
+        status dpn-replication
         RETVAL=$?
     ;;
 esac
