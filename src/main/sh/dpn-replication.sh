@@ -38,6 +38,7 @@ case "$1" in
         let COUNTDOWN=0
     done
 
+    RUNNING=1
     # This from the jenkins init script... slightly modified for our use
     if [ $RETVAL -eq 0 ]; then
         # Create a pipe to read from so we can still alter $RUNNING
