@@ -30,6 +30,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * Configuration for our beans. Mostly just creation of the rest adapters to
+ * access the various apis.
+ *
  * Created by shake on 4/27/15.
  */
 @Configuration
@@ -59,7 +62,7 @@ public class EarthConfiguration {
     List<RestAdapter> adapters(TransferAPIs transferAPIs,
                                NodeAPIs nodeAPIs,
                                BagAPIs bagAPIs) {
-        log.info("Creating adapters");
+        log.debug("Creating adapters");
         List<RestAdapter> adapters = new ArrayList<>();
         Gson gson = new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
@@ -90,7 +93,6 @@ public class EarthConfiguration {
     @Bean
     IngestAPI ingestAPI() {
         Ingest api = settings.getIngest();
-        log.info("Using api value of {} for ingest server", api.getEndpoint());
         // TODO: Get credentials
         RestAdapter adapter = new RestAdapter.Builder()
                 .setEndpoint(api.getEndpoint())
