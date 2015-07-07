@@ -1,5 +1,7 @@
 package org.chronopolis.earth;
 
+import org.chronopolis.earth.service.DpnService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -22,6 +24,9 @@ import java.security.cert.X509Certificate;
 @EnableConfigurationProperties
 public class Earth implements CommandLineRunner {
 
+    @Autowired
+    DpnService service;
+
     public static void main(String[] args) {
         SpringApplication.exit(SpringApplication.run(Earth.class));
     }
@@ -29,28 +34,10 @@ public class Earth implements CommandLineRunner {
     @Override
     public void run(final String... args) throws Exception {
         // Disable ssl cert validation
-        System.setProperty("jsse.enableSNIExtension", "false");
-        disableCertValidation();
-
-        boolean done = false;
-        System.out.println("Enter 'q' to quit");
-        while (!done) {
-            if ("q".equalsIgnoreCase(readLine())) {
-                done = true;
-            }
-        }
-
+        // System.setProperty("jsse.enableSNIExtension", "false");
+        // disableCertValidation();
+        service.replicate();
     }
-
-    private String readLine() {
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            return reader.readLine();
-        } catch (IOException ex) {
-            throw new RuntimeException("Unable to read STDIN");
-        }
-    }
-
 
     private void disableCertValidation() {
         // Create a trust manager that does not validate certificate chains
