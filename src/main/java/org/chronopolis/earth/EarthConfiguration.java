@@ -16,6 +16,7 @@ import org.chronopolis.earth.serializers.DateTimeDeserializer;
 import org.chronopolis.earth.serializers.DateTimeSerializer;
 import org.chronopolis.earth.serializers.ReplicationStatusDeserializer;
 import org.chronopolis.earth.serializers.ReplicationStatusSerializer;
+import org.chronopolis.rest.api.ErrorLogger;
 import org.chronopolis.rest.api.IngestAPI;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -62,7 +63,6 @@ public class EarthConfiguration {
     List<RestAdapter> adapters(TransferAPIs transferAPIs,
                                NodeAPIs nodeAPIs,
                                BagAPIs bagAPIs) {
-        log.debug("Creating adapters");
         List<RestAdapter> adapters = new ArrayList<>();
         Gson gson = new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
@@ -73,7 +73,7 @@ public class EarthConfiguration {
                 .create();
 
         for (Endpoint endpoint : settings.endpoints) {
-            log.info("Creating adapter for {}", endpoint.getName());
+            log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
             RestAdapter adapter = new RestAdapter.Builder()
                     .setEndpoint(endpoint.getApiRoot())
                     .setConverter(new GsonConverter(gson))
@@ -94,6 +94,8 @@ public class EarthConfiguration {
     IngestAPI ingestAPI() {
         Ingest api = settings.getIngest();
         // TODO: Get credentials
+        log.debug("Staging: {}", settings.getStage());
+        log.debug("Ingest Settings: {} {}", api.getEndpoint(), api.getUsername());
         RestAdapter adapter = new RestAdapter.Builder()
                 .setEndpoint(api.getEndpoint())
                 .setRequestInterceptor(new CredentialRequestInterceptor(
