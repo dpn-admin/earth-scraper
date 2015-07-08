@@ -1,30 +1,162 @@
 package org.chronopolis.earth.service;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import org.chronopolis.earth.api.BagAPIs;
+import org.chronopolis.earth.api.BalustradeBag;
+import org.chronopolis.earth.api.BalustradeNode;
+import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.NodeAPIs;
+import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.models.Bag;
+import org.chronopolis.earth.models.Node;
+import org.chronopolis.earth.models.Replication;
+import org.chronopolis.earth.models.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import retrofit.RetrofitError;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Service for when we are run from the command line
+ * TODO: Allow iteration for pages
+ *     : -Continue
+ *     : -Stop
  *
  * Created by shake on 7/7/15.
  */
 @Component
 @Profile("cli")
 public class CLIService implements DpnService {
+    private final Logger log = LoggerFactory.getLogger(CLIService.class);
+
+    @Autowired
+    TransferAPIs transferAPIs;
+
+    @Autowired
+    BagAPIs bagAPIs;
+
+    @Autowired
+    NodeAPIs nodeAPIs;
 
     @Override
     public void replicate() {
         boolean done = false;
         System.out.println("Enter 'q' to quit");
         while (!done) {
-            if ("q".equalsIgnoreCase(readLine())) {
+            OPTION option = inputOption();
+            if (option.equals(OPTION.BAG)) {
+                for (Map.Entry<String, BalustradeBag> entry: bagAPIs.getApiMap().entrySet()) {
+                    consumeBag(entry.getKey(), entry.getValue());
+                }
+            } else if (option.equals(OPTION.TRANSFER)) {
+                for (Map.Entry<String, BalustradeTransfers> entry: transferAPIs.getApiMap().entrySet()) {
+                    consumeTransfer(entry);
+                }
+            } else if (option.equals(OPTION.NODE)) {
+                for (Map.Entry<String, BalustradeNode> entry : nodeAPIs.getApiMap().entrySet()) {
+                    consumeNode(entry.getKey(), entry.getValue());
+                }
+            } else if (option.equals(OPTION.QUIT)) {
+                log.info("Quitting");
                 done = true;
             }
         }
+    }
+
+    /**
+     * Consumer for node apis
+     *
+     * @param name
+     * @param api
+     */
+    private void consumeNode(String name, BalustradeNode api) {
+        log.info("Current Admin node: {}", name);
+        Node node;
+        try {
+            node = api.getNode(name);
+        } catch (Exception error) {
+            log.info("Error getting node");
+            return;
+        }
+        log.info("[{}] {} {}", node.getName(), node.getApiRoot(), node.getSshPubkey());
+    }
+
+    /**
+     * Consumer for bag apis
+     *
+     * @param name
+     * @param api
+     */
+    private void consumeBag(String name, BalustradeBag api) {
+        log.info("Current Admin node: {}", name);
+        Response<Bag> bags;
+        try {
+            bags = api.getBags(ImmutableMap.of("admin_node", name));
+        } catch (Exception error) {
+            log.info("Error getting bags");
+            return;
+        }
+        log.info("Showing {} out of {} total bags", bags.getResults().size(), bags.getCount());
+        for (Bag bag : bags.getResults()) {
+            log.info("[{}] {}", bag.getAdminNode(), bag.getUuid());
+        }
+    }
+
+    /**
+     * Consumer for transfer apis
+     *
+     * @param entry
+     */
+    private void consumeTransfer(Map.Entry<String, BalustradeTransfers> entry) {
+        log.info("{}", entry.getKey());
+        BalustradeTransfers api = entry.getValue();
+        Response<Replication> replications;
+        try {
+            replications = api.getReplications(new HashMap<String, String>());
+        } catch (Exception error) {
+            log.info("Error getting replications");
+            return;
+        }
+        log.info("Showing {} out of {} total", replications.getResults().size(), replications.getCount());
+        for (Replication replication : replications.getResults()) {
+            log.info("[{}] {}", replication.status(), replication.getReplicationId());
+        }
+    }
+
+    /**
+     * Create a prompt and read the input for the next option
+     *
+     * @return the input given
+     */
+    private OPTION inputOption() {
+        OPTION option = OPTION.UNKNOWN;
+        while (option.equals(OPTION.UNKNOWN)) {
+            StringBuilder sb = new StringBuilder("Query Type: ");
+            String sep = " | ";
+            for (OPTION value : OPTION.values()) {
+                if (!value.equals(OPTION.UNKNOWN)) {
+                    sb.append(value.name());
+                    sb.append(" [");
+                    sb.append(value.name().charAt(0));
+                    sb.append("]");
+                    sb.append(sep);
+                }
+            }
+
+            sb.replace(sb.length() - sep.length(), sb.length(), " -> ");
+            System.out.println(sb.toString());
+            option = OPTION.fromString(readLine().trim());
+        }
+        return option;
     }
 
     private String readLine() {
@@ -33,6 +165,29 @@ public class CLIService implements DpnService {
             return reader.readLine();
         } catch (IOException ex) {
             throw new RuntimeException("Unable to read STDIN");
+        }
+    }
+
+    private enum OPTION {
+        BAG, TRANSFER, NODE, QUIT, UNKNOWN;
+
+        private static OPTION fromString(String text) {
+            switch (text) {
+                case "B":
+                case "b":
+                    return BAG;
+                case "T":
+                case "t":
+                    return TRANSFER;
+                case "N":
+                case "n":
+                    return NODE;
+                case "Q":
+                case "q":
+                    return QUIT;
+                default:
+                    return UNKNOWN;
+            }
         }
     }
 
