@@ -1,10 +1,25 @@
 earth:
+  stage: '/tmp/staging'
+  # Ingest Server to connect with
+  ingest:
+    endpoint: 'https://localhost:8080'
+    username: 'admin'
+    password: 'example-password'
+  # DPN RESTful servers to connect to
   endpoints:
     -
-     auth-key: 'my-auth-key'
-     api-root: 'http://dpn-server-1.org'
-     name: 'node-1'
-    -
-     auth-key: 'other-auth-key'
-     api-root: 'http://dpn-server-2.org'
-     name: 'node-2'
+     auth-key: 'example-auth-key'
+     api-root: 'https://example-dpn-node.edu'
+     name: 'example-dpn-node'
+
+cron.replicate: '0 0 * * * *'
+spring.profiles.active: 'production'
+
+# Disable any type of DB support
+spring.data.jpa.repositories.enabled: false
+
+logging:
+  path: /var/log/dpn/
+  file: dpn.log
+  level:
+    org.chronopolis: TRACE
