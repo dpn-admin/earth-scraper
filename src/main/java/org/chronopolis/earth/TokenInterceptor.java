@@ -19,7 +19,7 @@ public class TokenInterceptor implements RequestInterceptor {
 
     @Override
     public void intercept(final RequestFacade requestFacade) {
-        String tokenAuth = "token " + token;
+        String tokenAuth = "Token " + token;
         requestFacade.addHeader("Authorization", tokenAuth);
 
         // needed to get back JSON
