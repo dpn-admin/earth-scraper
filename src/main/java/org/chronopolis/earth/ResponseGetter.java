@@ -1,12 +1,14 @@
 package org.chronopolis.earth;
 
-import org.chronopolis.earth.models.Response;
+import com.google.common.base.Optional;
 
 /**
+ * Interface to allow our callback to have a predefined getter
+ *
  * Created by shake on 7/8/15.
  */
 public interface ResponseGetter<E> {
 
-    Response<E> getResponse();
+    Optional<E> getResponse();
 
 }
