@@ -15,6 +15,7 @@ import java.util.List;
 @ConfigurationProperties(prefix = "earth")
 public class EarthSettings {
 
+    Boolean disableSNI;
     String stage;
     Ingest ingest;
     List<Endpoint> endpoints = new ArrayList<>();
@@ -38,6 +39,15 @@ public class EarthSettings {
 
     public EarthSettings setIngest(Ingest ingest) {
         this.ingest = ingest;
+        return this;
+    }
+
+    public Boolean disableSNI() {
+        return disableSNI;
+    }
+
+    public EarthSettings setDisableSNI(Boolean disableSNI) {
+        this.disableSNI = disableSNI;
         return this;
     }
 

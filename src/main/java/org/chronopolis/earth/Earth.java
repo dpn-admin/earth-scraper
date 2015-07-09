@@ -18,6 +18,8 @@ import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
 
 /**
+ * Entry point for our program.
+ *
  * Created by shake on 11/13/14.
  */
 @SpringBootApplication
@@ -27,6 +29,9 @@ public class Earth implements CommandLineRunner {
     @Autowired
     DpnService service;
 
+    @Autowired
+    EarthSettings settings;
+
     public static void main(String[] args) {
         SpringApplication.exit(SpringApplication.run(Earth.class));
     }
@@ -34,8 +39,12 @@ public class Earth implements CommandLineRunner {
     @Override
     public void run(final String... args) throws Exception {
         // Disable ssl cert validation
-        // System.setProperty("jsse.enableSNIExtension", "false");
-        // disableCertValidation();
+        if (settings.disableSNI()) {
+            System.out.println("Disabling SNI/cert validation");
+            System.setProperty("jsse.enableSNIExtension", "false");
+            disableCertValidation();
+        }
+
         service.replicate();
     }
 
