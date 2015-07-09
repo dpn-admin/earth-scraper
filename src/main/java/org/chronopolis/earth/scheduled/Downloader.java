@@ -1,5 +1,7 @@
 package org.chronopolis.earth.scheduled;
 
+import com.google.common.base.Optional;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
@@ -8,6 +10,7 @@ import com.google.common.io.Files;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.chronopolis.earth.EarthSettings;
+import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Replication;
@@ -60,15 +63,30 @@ public class Downloader {
     @Autowired
     EarthSettings settings;
 
-
     private Response<Replication> getTransfers(BalustradeTransfers balustrade,
                                                Map<String, String> params) {
-        Response<Replication> transfers = balustrade.getReplications(params);
+        SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
+        balustrade.getReplications(params, callback);
+        Optional<Response<Replication>> response = callback.getResponse();
+
+        // get the actual response OR an empty response (in the event of failure)
+        Response<Replication> transfers = response.or(emptyResponse());
         log.debug("Count: {}\nNext: {}\nPrevious: {}",
                 transfers.getCount(),
                 transfers.getNext(),
                 transfers.getPrevious());
         return transfers;
+    }
+
+    /**
+     * Create an empty response object
+     *
+     * @return
+     */
+    private Response<Replication> emptyResponse() {
+        Response response = new Response();
+        response.setResults(Lists.newArrayList());
+        return response;
     }
 
     // Scheduled tasks. Delegate to functions based on what state the replication is in
@@ -211,8 +229,9 @@ public class Downloader {
      * @param transfer
      */
     private void store(BalustradeTransfers api, Replication transfer) {
+        SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setStatus(Replication.Status.STORED);
-        api.updateReplication(transfer.getReplicationId(), transfer);
+        api.updateReplication(transfer.getReplicationId(), transfer, callback);
     }
 
 
@@ -273,8 +292,9 @@ public class Downloader {
 
         log.info("Bag {} is valid: {}", uuid, valid);
         transfer.setBagValid(valid);
-        api.updateReplication(transfer.getReplicationId(), transfer);
 
+        SimpleCallback<Replication> callback = new SimpleCallback<>();
+        api.updateReplication(transfer.getReplicationId(), transfer, callback);
     }
 
     /**
@@ -360,8 +380,10 @@ public class Downloader {
                 log.error(error);
             } else {
                 log.info("rsync successful, updating replication transfer");
+
+                SimpleCallback<Replication> callback = new SimpleCallback<>();
                 transfer.setStatus(Replication.Status.RECEIVED);
-                api.updateReplication(transfer.getReplicationId(), transfer);
+                api.updateReplication(transfer.getReplicationId(), transfer, callback);
             }
 
             log.debug("Rsync stats:\n {}", stats);
@@ -411,8 +433,16 @@ public class Downloader {
         // Set the receipt
         String receipt = hash.toString();
         transfer.setFixityValue(receipt);
-        Replication update = balustrade.updateReplication(transfer.getReplicationId(), transfer);
-        transfer.setFixityAccept(update.isFixityAccept());
+
+        // Do the update
+        SimpleCallback<Replication> callback = new SimpleCallback<>();
+        balustrade.updateReplication(transfer.getReplicationId(), transfer, callback);
+        Optional<Replication> response = callback.getResponse();
+
+        if (response.isPresent()) {
+            Replication update = response.get();
+            transfer.setFixityAccept(update.isFixityAccept());
+        }
     }
 
     /**
