@@ -81,11 +81,11 @@ public class Downloader {
     /**
      * Create an empty response object
      *
-     * @return
+     * @return a response with no result list
      */
     private Response<Replication> emptyResponse() {
-        Response response = new Response();
-        response.setResults(Lists.newArrayList());
+        Response<Replication> response = new Response<>();
+        response.setResults(Lists.<Replication>newArrayList());
         return response;
     }
 
@@ -190,7 +190,7 @@ public class Downloader {
                         continue;
                     }
 
-                    String from = transfer.getFromNode();
+                    // String from = transfer.getFromNode();
                     String uuid = transfer.getUuid();
 
                     Map<String, Object> chronParams = Maps.newHashMap();
@@ -225,8 +225,8 @@ public class Downloader {
     /**
      * Update a replication to note completion of ingestion into chronopolis
      *
-     * @param api
-     * @param transfer
+     * @param api The transfer API to use
+     * @param transfer The replication transfer to update
      */
     private void store(BalustradeTransfers api, Replication transfer) {
         SimpleCallback<Replication> callback = new SimpleCallback<>();
@@ -239,7 +239,7 @@ public class Downloader {
      * Notify our Chronopolis ingest server that a bag can be replicated
      * in to Chronopolis
      *
-     * @param transfer
+     * @param transfer The replication transfer being ingested into Chronopolis
      */
     private void push(Replication transfer) {
         if (transfer.isFixityAccept() && transfer.isBagValid()) {
@@ -303,7 +303,7 @@ public class Downloader {
      * @param uuid     the uuid of the bag
      * @param manifest the manifest to validate
      * @param bag      the path to the bag
-     * @return
+     * @return true if valid; false otherwise
      */
     private boolean validateManifest(String uuid, Path manifest, Path bag) {
         String line;
@@ -345,7 +345,7 @@ public class Downloader {
      * Configured so that our final download location looks like:
      * /staging/area/from_node/bag_uuid
      *
-     * @param transfer
+     * @param transfer The replication transfer to download
      * @throws InterruptedException
      */
     private void download(BalustradeTransfers api, Replication transfer) throws InterruptedException, IOException {
@@ -396,8 +396,8 @@ public class Downloader {
     /**
      * Create a string from the input stream
      *
-     * @param is
-     * @return
+     * @param is The input stream to string...ify
+     * @return string blob of the input stream
      * @throws IOException
      */
     private String stringFromStream(InputStream is) throws IOException {
@@ -413,7 +413,7 @@ public class Downloader {
     /**
      * Digest the tarball and update the api
      *
-     * @param transfer
+     * @param transfer The replication transfer to update
      */
     private void update(BalustradeTransfers balustrade, Replication transfer) {
         // Get the files digest
@@ -448,13 +448,13 @@ public class Downloader {
     /**
      * Explode a tarball for a given transfer
      *
-     * @param transfer
+     * @param transfer The replication transfer to untar
      */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     private void untar(Replication transfer) throws IOException {
         String stage = settings.getStage();
         Path tarball = Paths.get(stage, transfer.getFromNode(), transfer.getUuid() + ".tar");
 
-        String bags = stage;
         String depositor = transfer.getFromNode();
 
         // Set up our tar stream and channel
@@ -463,8 +463,8 @@ public class Downloader {
         ReadableByteChannel inChannel = Channels.newChannel(tais);
 
         // Get our root path (just the staging area), and create an updated bag path
-        Path root = Paths.get(bags, depositor);
-        Path bag = root.resolve(entry.getName());
+        Path root = Paths.get(stage, depositor);
+        // Path bag = root.resolve(entry.getName());
 
         while (entry != null) {
             Path entryPath = root.resolve(entry.getName());
@@ -475,6 +475,7 @@ public class Downloader {
             } else {
                 log.trace("Creating file {}", entry.getName());
 
+                // Create the parent directories just in case
                 entryPath.getParent().toFile().mkdirs();
 
                 // In case files are greater than 2^32 bytes, we need to use a
