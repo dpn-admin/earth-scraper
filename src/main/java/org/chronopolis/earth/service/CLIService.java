@@ -1,7 +1,8 @@
 package org.chronopolis.earth.service;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
+import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
@@ -17,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import retrofit.RetrofitError;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,6 +30,8 @@ import java.util.Map;
  * TODO: Allow iteration for pages
  *     : -Continue
  *     : -Stop
+ * TODO: We might share some of the code in the consume methods with the scheduled based
+ *       classes. If we do, find a common place for them.
  *
  * Created by shake on 7/7/15.
  */
@@ -80,14 +82,16 @@ public class CLIService implements DpnService {
      */
     private void consumeNode(String name, BalustradeNode api) {
         log.info("Current Admin node: {}", name);
-        Node node;
-        try {
-            node = api.getNode(name);
-        } catch (Exception error) {
-            log.info("Error getting node");
-            return;
+        SimpleCallback<Node> callback = new SimpleCallback<>();
+
+        api.getNode(name, callback);
+        Optional<Node> response = callback.getResponse();
+
+        // wtb java 8 flat map ;_;
+        if (response.isPresent()) {
+            Node node = response.get();
+            log.info("[{}] {} {}", node.getName(), node.getApiRoot(), node.getSshPubkey());
         }
-        log.info("[{}] {} {}", node.getName(), node.getApiRoot(), node.getSshPubkey());
     }
 
     /**
@@ -98,16 +102,17 @@ public class CLIService implements DpnService {
      */
     private void consumeBag(String name, BalustradeBag api) {
         log.info("Current Admin node: {}", name);
-        Response<Bag> bags;
-        try {
-            bags = api.getBags(ImmutableMap.of("admin_node", name));
-        } catch (Exception error) {
-            log.info("Error getting bags");
-            return;
-        }
-        log.info("Showing {} out of {} total bags", bags.getResults().size(), bags.getCount());
-        for (Bag bag : bags.getResults()) {
-            log.info("[{}] {}", bag.getAdminNode(), bag.getUuid());
+        SimpleCallback<Response<Bag>> callback = new SimpleCallback<>();
+
+        api.getBags(ImmutableMap.of("admin_node", name), callback);
+        Optional<Response<Bag>> response = callback.getResponse();
+
+        if (response.isPresent()) {
+            Response<Bag> bags = response.get();
+            log.info("Showing {} out of {} total bags", bags.getResults().size(), bags.getCount());
+            for (Bag bag : bags.getResults()) {
+                log.info("[{}] {}", bag.getAdminNode(), bag.getUuid());
+            }
         }
     }
 
@@ -119,16 +124,17 @@ public class CLIService implements DpnService {
     private void consumeTransfer(Map.Entry<String, BalustradeTransfers> entry) {
         log.info("{}", entry.getKey());
         BalustradeTransfers api = entry.getValue();
-        Response<Replication> replications;
-        try {
-            replications = api.getReplications(new HashMap<String, String>());
-        } catch (Exception error) {
-            log.info("Error getting replications");
-            return;
-        }
-        log.info("Showing {} out of {} total", replications.getResults().size(), replications.getCount());
-        for (Replication replication : replications.getResults()) {
-            log.info("[{}] {}", replication.status(), replication.getReplicationId());
+        SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
+
+        api.getReplications(new HashMap<String, String>(), callback);
+        Optional<Response<Replication>> response = callback.getResponse();
+
+        if (response.isPresent()) {
+            Response<Replication> replications = response.get();
+            log.info("Showing {} out of {} total", replications.getResults().size(), replications.getCount());
+            for (Replication replication : replications.getResults()) {
+                log.info("[{}] {}", replication.status(), replication.getReplicationId());
+            }
         }
     }
 

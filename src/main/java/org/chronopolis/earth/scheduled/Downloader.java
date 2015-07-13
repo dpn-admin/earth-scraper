@@ -1,5 +1,7 @@
 package org.chronopolis.earth.scheduled;
 
+import com.google.common.base.Optional;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
@@ -8,6 +10,7 @@ import com.google.common.io.Files;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.chronopolis.earth.EarthSettings;
+import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Replication;
@@ -60,15 +63,30 @@ public class Downloader {
     @Autowired
     EarthSettings settings;
 
-
     private Response<Replication> getTransfers(BalustradeTransfers balustrade,
                                                Map<String, String> params) {
-        Response<Replication> transfers = balustrade.getReplications(params);
+        SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
+        balustrade.getReplications(params, callback);
+        Optional<Response<Replication>> response = callback.getResponse();
+
+        // get the actual response OR an empty response (in the event of failure)
+        Response<Replication> transfers = response.or(emptyResponse());
         log.debug("Count: {}\nNext: {}\nPrevious: {}",
                 transfers.getCount(),
                 transfers.getNext(),
                 transfers.getPrevious());
         return transfers;
+    }
+
+    /**
+     * Create an empty response object
+     *
+     * @return a response with no result list
+     */
+    private Response<Replication> emptyResponse() {
+        Response<Replication> response = new Response<>();
+        response.setResults(Lists.<Replication>newArrayList());
+        return response;
     }
 
     // Scheduled tasks. Delegate to functions based on what state the replication is in
@@ -172,7 +190,7 @@ public class Downloader {
                         continue;
                     }
 
-                    String from = transfer.getFromNode();
+                    // String from = transfer.getFromNode();
                     String uuid = transfer.getUuid();
 
                     Map<String, Object> chronParams = Maps.newHashMap();
@@ -207,12 +225,13 @@ public class Downloader {
     /**
      * Update a replication to note completion of ingestion into chronopolis
      *
-     * @param api
-     * @param transfer
+     * @param api The transfer API to use
+     * @param transfer The replication transfer to update
      */
     private void store(BalustradeTransfers api, Replication transfer) {
+        SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setStatus(Replication.Status.STORED);
-        api.updateReplication(transfer.getReplicationId(), transfer);
+        api.updateReplication(transfer.getReplicationId(), transfer, callback);
     }
 
 
@@ -220,7 +239,7 @@ public class Downloader {
      * Notify our Chronopolis ingest server that a bag can be replicated
      * in to Chronopolis
      *
-     * @param transfer
+     * @param transfer The replication transfer being ingested into Chronopolis
      */
     private void push(Replication transfer) {
         if (transfer.isFixityAccept() && transfer.isBagValid()) {
@@ -273,8 +292,9 @@ public class Downloader {
 
         log.info("Bag {} is valid: {}", uuid, valid);
         transfer.setBagValid(valid);
-        api.updateReplication(transfer.getReplicationId(), transfer);
 
+        SimpleCallback<Replication> callback = new SimpleCallback<>();
+        api.updateReplication(transfer.getReplicationId(), transfer, callback);
     }
 
     /**
@@ -283,7 +303,7 @@ public class Downloader {
      * @param uuid     the uuid of the bag
      * @param manifest the manifest to validate
      * @param bag      the path to the bag
-     * @return
+     * @return true if valid; false otherwise
      */
     private boolean validateManifest(String uuid, Path manifest, Path bag) {
         String line;
@@ -325,7 +345,7 @@ public class Downloader {
      * Configured so that our final download location looks like:
      * /staging/area/from_node/bag_uuid
      *
-     * @param transfer
+     * @param transfer The replication transfer to download
      * @throws InterruptedException
      */
     private void download(BalustradeTransfers api, Replication transfer) throws InterruptedException, IOException {
@@ -360,8 +380,10 @@ public class Downloader {
                 log.error(error);
             } else {
                 log.info("rsync successful, updating replication transfer");
+
+                SimpleCallback<Replication> callback = new SimpleCallback<>();
                 transfer.setStatus(Replication.Status.RECEIVED);
-                api.updateReplication(transfer.getReplicationId(), transfer);
+                api.updateReplication(transfer.getReplicationId(), transfer, callback);
             }
 
             log.debug("Rsync stats:\n {}", stats);
@@ -374,8 +396,8 @@ public class Downloader {
     /**
      * Create a string from the input stream
      *
-     * @param is
-     * @return
+     * @param is The input stream to string...ify
+     * @return string blob of the input stream
      * @throws IOException
      */
     private String stringFromStream(InputStream is) throws IOException {
@@ -391,7 +413,7 @@ public class Downloader {
     /**
      * Digest the tarball and update the api
      *
-     * @param transfer
+     * @param transfer The replication transfer to update
      */
     private void update(BalustradeTransfers balustrade, Replication transfer) {
         // Get the files digest
@@ -411,20 +433,28 @@ public class Downloader {
         // Set the receipt
         String receipt = hash.toString();
         transfer.setFixityValue(receipt);
-        Replication update = balustrade.updateReplication(transfer.getReplicationId(), transfer);
-        transfer.setFixityAccept(update.isFixityAccept());
+
+        // Do the update
+        SimpleCallback<Replication> callback = new SimpleCallback<>();
+        balustrade.updateReplication(transfer.getReplicationId(), transfer, callback);
+        Optional<Replication> response = callback.getResponse();
+
+        if (response.isPresent()) {
+            Replication update = response.get();
+            transfer.setFixityAccept(update.isFixityAccept());
+        }
     }
 
     /**
      * Explode a tarball for a given transfer
      *
-     * @param transfer
+     * @param transfer The replication transfer to untar
      */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     private void untar(Replication transfer) throws IOException {
         String stage = settings.getStage();
         Path tarball = Paths.get(stage, transfer.getFromNode(), transfer.getUuid() + ".tar");
 
-        String bags = stage;
         String depositor = transfer.getFromNode();
 
         // Set up our tar stream and channel
@@ -433,8 +463,8 @@ public class Downloader {
         ReadableByteChannel inChannel = Channels.newChannel(tais);
 
         // Get our root path (just the staging area), and create an updated bag path
-        Path root = Paths.get(bags, depositor);
-        Path bag = root.resolve(entry.getName());
+        Path root = Paths.get(stage, depositor);
+        // Path bag = root.resolve(entry.getName());
 
         while (entry != null) {
             Path entryPath = root.resolve(entry.getName());
@@ -445,6 +475,7 @@ public class Downloader {
             } else {
                 log.trace("Creating file {}", entry.getName());
 
+                // Create the parent directories just in case
                 entryPath.getParent().toFile().mkdirs();
 
                 // In case files are greater than 2^32 bytes, we need to use a
