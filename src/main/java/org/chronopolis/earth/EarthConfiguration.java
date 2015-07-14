@@ -19,6 +19,8 @@ import org.chronopolis.earth.serializers.ReplicationStatusSerializer;
 import org.chronopolis.rest.api.ErrorLogger;
 import org.chronopolis.rest.api.IngestAPI;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,7 @@ import retrofit.converter.GsonConverter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 /**
  * Configuration for our beans. Mostly just creation of the rest adapters to
@@ -43,6 +46,11 @@ public class EarthConfiguration {
 
     @Autowired
     EarthSettings settings;
+
+    @Bean
+    DateTimeFormatter formatter() {
+        return ISODateTimeFormat.basicDateTimeNoMillis().withZoneUTC();
+    }
 
     @Bean
     TransferAPIs transferAPIs () {
@@ -78,7 +86,8 @@ public class EarthConfiguration {
                     .setEndpoint(endpoint.getApiRoot())
                     .setConverter(new GsonConverter(gson))
                     .setRequestInterceptor(new TokenInterceptor(endpoint.getAuthKey()))
-                    .setLogLevel(RestAdapter.LogLevel.FULL)
+                    .setLogLevel(RestAdapter.LogLevel.NONE)
+                    .setExecutors(Executors.newCachedThreadPool(), Executors.newSingleThreadExecutor())
                     .build();
 
             adapters.add(adapter);
