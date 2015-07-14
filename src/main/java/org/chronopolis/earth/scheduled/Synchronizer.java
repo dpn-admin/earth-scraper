@@ -1,15 +1,22 @@
 package org.chronopolis.earth.scheduled;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
+import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
+import org.chronopolis.earth.models.Replication;
+import org.chronopolis.earth.models.Response;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -30,6 +37,8 @@ import java.util.Map;
 @Profile("sync")
 @EnableScheduling
 public class Synchronizer {
+
+    private final Logger log = LoggerFactory.getLogger(Synchronizer.class);
 
     @Autowired
     DateTimeFormatter formatter;
@@ -55,9 +64,16 @@ public class Synchronizer {
         DateTime after = DateTime.now().minusWeeks(1);
         for (String node: transferAPIs.getApiMap().keySet()) {
             BalustradeTransfers api = transferAPIs.getApiMap().get(node);
+            SimpleCallback<Response<Replication>> cb = new SimpleCallback<>();
             api.getReplications(ImmutableMap.of(
                     "admin_node", node,
-                    "after", formatter.print(after)));
+                    "after", formatter.print(after)), cb);
+
+            Optional<Response<Replication>> response = cb.getResponse();
+            if (response.isPresent()) {
+                Response<Replication> replications = response.get();
+                log.info("[]: {} Replications to sync", node, replications.getCount());
+            }
 
             // api.getRestores(new HashMap());
         }
@@ -69,10 +85,17 @@ public class Synchronizer {
         DateTime after = DateTime.now().minusWeeks(1);
         Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
         for (String node : apis.keySet()) {
+            SimpleCallback<Response<Bag>> cb = new SimpleCallback<>();
             BalustradeBag api = apis.get(node);
             api.getBags(ImmutableMap.of(
                     "admin_node", node,
-                    "after", formatter.print(after)));
+                    "after", formatter.print(after)), cb);
+
+            Optional<Response<Bag>> response = cb.getResponse();
+            if (response.isPresent()) {
+                Response<Bag> bags = response.get();
+                log.info("[]: {} Bags to sync", node, bags.getCount());
+            }
 
             // ourAPI.updateBag("uuid", bag, callback);
         }
