@@ -27,10 +27,10 @@ public interface BalustradeTransfers {
     Response<Replication> getReplications(@QueryMap Map<String, String> params);
 
     @GET("/api-v1/replicate/")
-    Response<Replication> getReplications(@QueryMap Map<String, String> params, Callback<Response<Replication>> callback);
+    void getReplications(@QueryMap Map<String, String> params, Callback<Response<Replication>> callback);
 
     @POST("/api-v1/replicate/")
-    void createReplication(@Body Replication replication);
+    Replication createReplication(@Body Replication replication);
 
     @POST("/api-v1/replicate/")
     void createReplication(@Body Replication replication, Callback<Void> callback);
@@ -39,29 +39,29 @@ public interface BalustradeTransfers {
     Replication getReplication(@Path("id") String id);
 
     @GET("/api-v1/replicate/{id}/")
-    Replication getReplication(@Path("id") String id, Callback<Replication> callback);
+    void getReplication(@Path("id") String id, Callback<Replication> callback);
 
     @PUT("/api-v1/replicate/{id}/")
     Replication updateReplication(@Path("id") String id, @Body Replication replication);
 
     @PUT("/api-v1/replicate/{id}/")
-    Replication updateReplication(@Path("id") String id, @Body Replication replication, Callback<Replication> callback);
+    void updateReplication(@Path("id") String id, @Body Replication replication, Callback<Replication> callback);
 
     @PATCH("/api-v1/replicate/{id}/")
     Replication patchReplication(@Path("id") String id, @Body Replication replication);
 
     @PATCH("/api-v1/replicate/{id}/")
-    Replication patchReplication(@Path("id") String id, @Body Replication replication, Callback<Replication> callback);
+    void patchReplication(@Path("id") String id, @Body Replication replication, Callback<Replication> callback);
 
     // Restores
     @GET("/api-v1/restore/")
     Response<Restore> getRestores(@QueryMap Map<String, String> params);
 
     @GET("/api-v1/restore/")
-    Response<Restore> getRestores(@QueryMap Map<String, String> params, Callback<Response<Restore>> callback);
+    void getRestores(@QueryMap Map<String, String> params, Callback<Response<Restore>> callback);
 
     @POST("/api-v1/restore/")
-    void createRestore(@Body Restore replication);
+    Restore createRestore(@Body Restore replication);
 
     @POST("/api-v1/restore/")
     void createRestore(@Body Restore replication, Callback<Void> callback);
@@ -70,18 +70,18 @@ public interface BalustradeTransfers {
     Restore getRestore(@Path("id") String id);
 
     @GET("/api-v1/restore/{id}/")
-    Restore getRestore(@Path("id") String id, Callback<Restore> callback);
+    void getRestore(@Path("id") String id, Callback<Restore> callback);
 
     @PUT("/api-v1/restore/{id}/")
     Restore updateRestore(@Path("id") String id, @Body Restore replication);
 
     @PUT("/api-v1/restore/{id}/")
-    Restore updateRestore(@Path("id") String id, @Body Restore replication, Callback<Restore> callback);
+    void updateRestore(@Path("id") String id, @Body Restore replication, Callback<Restore> callback);
 
     @PATCH("/api-v1/restore/{id}/")
     Restore patchRestore(@Path("id") String id, @Body Restore replication);
 
     @PATCH("/api-v1/restore/{id}/")
-    Restore patchRestore(@Path("id") String id, @Body Restore replication, Callback<Restore> callback);
+    void patchRestore(@Path("id") String id, @Body Restore replication, Callback<Restore> callback);
 
 }
