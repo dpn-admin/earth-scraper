@@ -26,7 +26,10 @@ cd ../
 # Get the version of the build and trim off the -SNAPSHOT
 echo "Getting version from maven..."
 full_version=`mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec`
+
+# Not the best regex but since it's small it shouldn't matter much
 version=`echo $full_version | sed 's/-.*//'`
+release_type=`echo $full_version | sed 's/.*-//'`
 
 if [ $? -ne 0 ]; then
     echo "Error getting version from maven exec plugin"
@@ -34,7 +37,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Only package releases
-jarfile=target/dpn-replication-$version-RELEASE.jar
+jarfile=target/dpn-replication-$version-$release_type.jar
 
 if [ ! -e $jarfile ]; then
     echo "Building latest jar..."
