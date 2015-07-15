@@ -71,7 +71,7 @@ public class Downloader {
 
         // get the actual response OR an empty response (in the event of failure)
         Response<Replication> transfers = response.or(emptyResponse());
-        log.debug("Count: {}\nNext: {}\nPrevious: {}",
+        log.trace("Count: {}\nNext: {}\nPrevious: {}",
                 transfers.getCount(),
                 transfers.getNext(),
                 transfers.getPrevious());
