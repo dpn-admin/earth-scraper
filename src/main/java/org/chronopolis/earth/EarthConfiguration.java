@@ -9,14 +9,14 @@ import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
-import org.chronopolis.earth.models.Endpoint;
-import org.chronopolis.earth.models.Ingest;
+import org.chronopolis.earth.config.Dpn;
+import org.chronopolis.earth.config.Endpoint;
+import org.chronopolis.earth.config.Ingest;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.serializers.DateTimeDeserializer;
 import org.chronopolis.earth.serializers.DateTimeSerializer;
 import org.chronopolis.earth.serializers.ReplicationStatusDeserializer;
 import org.chronopolis.earth.serializers.ReplicationStatusSerializer;
-import org.chronopolis.rest.api.ErrorLogger;
 import org.chronopolis.rest.api.IngestAPI;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
@@ -31,7 +31,6 @@ import retrofit.converter.GsonConverter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors;
 
 /**
  * Configuration for our beans. Mostly just creation of the rest adapters to
@@ -68,26 +67,32 @@ public class EarthConfiguration {
     }
 
     @Bean
-    List<RestAdapter> adapters(TransferAPIs transferAPIs,
-                               NodeAPIs nodeAPIs,
-                               BagAPIs bagAPIs) {
-        List<RestAdapter> adapters = new ArrayList<>();
-        Gson gson = new GsonBuilder()
+    Gson gson() {
+        return new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                 .registerTypeAdapter(DateTime.class, new DateTimeSerializer())
                 .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
                 .registerTypeAdapter(Replication.Status.class, new ReplicationStatusSerializer())
                 .registerTypeAdapter(Replication.Status.class, new ReplicationStatusDeserializer())
                 .create();
+    }
 
-        for (Endpoint endpoint : settings.endpoints) {
+    @Bean
+    List<RestAdapter> adapters(TransferAPIs transferAPIs,
+                               NodeAPIs nodeAPIs,
+                               BagAPIs bagAPIs,
+                               Gson gson) {
+        List<RestAdapter> adapters = new ArrayList<>();
+        Dpn dpn = settings.getDpn();
+
+        for (Endpoint endpoint : dpn.getRemote()) {
             log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
             RestAdapter adapter = new RestAdapter.Builder()
                     .setEndpoint(endpoint.getApiRoot())
                     .setConverter(new GsonConverter(gson))
                     .setRequestInterceptor(new TokenInterceptor(endpoint.getAuthKey()))
                     .setLogLevel(RestAdapter.LogLevel.NONE)
-                    .setExecutors(Executors.newCachedThreadPool(), Executors.newSingleThreadExecutor())
+                    // .setExecutors(Executors.newCachedThreadPool(), Executors.newSingleThreadExecutor())
                     .build();
 
             adapters.add(adapter);
@@ -96,7 +101,21 @@ public class EarthConfiguration {
             transferAPIs.put(endpoint.getName(), adapter.create(BalustradeTransfers.class));
         }
 
+
         return adapters;
+    }
+
+    @Bean
+    RestAdapter local(Gson gson) {
+        Dpn dpn = settings.getDpn();
+        Endpoint local = dpn.getLocal();
+        log.debug("Creating local adapter for root {}", local.getApiRoot());
+        return new RestAdapter.Builder()
+                .setEndpoint(local.getApiRoot())
+                .setConverter(new GsonConverter(gson))
+                .setRequestInterceptor(new TokenInterceptor(local.getAuthKey()))
+                .setLogLevel(RestAdapter.LogLevel.NONE)
+                .build();
     }
 
     @Bean

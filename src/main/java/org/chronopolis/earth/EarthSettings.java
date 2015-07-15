@@ -1,14 +1,13 @@
 package org.chronopolis.earth;
 
-import org.chronopolis.earth.models.Endpoint;
-import org.chronopolis.earth.models.Ingest;
+import org.chronopolis.earth.config.Dpn;
+import org.chronopolis.earth.config.Ingest;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
+ * Configuration Properties for our application
+ *
  * Created by shake on 11/14/14.
  */
 @Component
@@ -18,11 +17,7 @@ public class EarthSettings {
     Boolean disableSNI;
     String stage;
     Ingest ingest;
-    List<Endpoint> endpoints = new ArrayList<>();
-
-    public List<Endpoint> getEndpoints() {
-        return endpoints;
-    }
+    Dpn dpn;
 
     public String getStage() {
         return stage;
@@ -51,11 +46,13 @@ public class EarthSettings {
         return this;
     }
 
-    /*
-    public EarthSettings setEndpoints(List<Endpoint> endpoints) {
-        this.endpoints = endpoints;
+    public Dpn getDpn() {
+        return dpn;
+    }
+
+    public EarthSettings setDpn(Dpn dpn) {
+        this.dpn = dpn;
         return this;
     }
-    */
 
 }
