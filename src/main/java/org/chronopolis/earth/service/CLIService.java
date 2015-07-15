@@ -13,9 +13,11 @@ import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.scheduled.Synchronizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -49,6 +51,9 @@ public class CLIService implements DpnService {
     @Autowired
     NodeAPIs nodeAPIs;
 
+    @Autowired
+    ApplicationContext context;
+
     @Override
     public void replicate() {
         boolean done = false;
@@ -67,10 +72,22 @@ public class CLIService implements DpnService {
                 for (Map.Entry<String, BalustradeNode> entry : nodeAPIs.getApiMap().entrySet()) {
                     consumeNode(entry.getKey(), entry.getValue());
                 }
+            } else if (option.equals(OPTION.SYNC)) {
+                sync();
             } else if (option.equals(OPTION.QUIT)) {
                 log.info("Quitting");
                 done = true;
             }
+        }
+    }
+
+    private void sync() {
+        Synchronizer bean;
+        try {
+            bean = context.getBean(Synchronizer.class);
+            bean.synchronize();
+        } catch (Exception e) {
+            System.out.println("Synchronizer not found, please add 'sync' to your spring.profiles");
         }
     }
 
@@ -175,7 +192,7 @@ public class CLIService implements DpnService {
     }
 
     private enum OPTION {
-        BAG, TRANSFER, NODE, QUIT, UNKNOWN;
+        BAG, TRANSFER, NODE, QUIT, SYNC, UNKNOWN;
 
         private static OPTION fromString(String text) {
             switch (text) {
@@ -191,6 +208,9 @@ public class CLIService implements DpnService {
                 case "Q":
                 case "q":
                     return QUIT;
+                case "S":
+                case "s":
+                    return SYNC;
                 default:
                     return UNKNOWN;
             }
