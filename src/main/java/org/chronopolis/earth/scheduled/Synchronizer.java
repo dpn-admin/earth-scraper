@@ -77,11 +77,11 @@ public class Synchronizer {
             Optional<Response<Replication>> response = cb.getResponse();
             if (response.isPresent()) {
                 Response<Replication> replications = response.get();
-                log.info("[]: {} Replications to sync", node, replications.getCount());
+                log.info("[{}]: {} Replications to sync", node, replications.getCount());
 
                 // update each replication
                 for (Replication replication : replications.getResults()) {
-                    log.trace("[]: Updating replication {}", node, replication.getReplicationId());
+                    log.trace("[{}]: Updating replication {}", node, replication.getReplicationId());
                     local.getTransfersAPI().updateReplication(replication.getReplicationId(), replication);
                 }
             }
@@ -106,11 +106,11 @@ public class Synchronizer {
             Optional<Response<Bag>> response = cb.getResponse();
             if (response.isPresent()) {
                 Response<Bag> bags = response.get();
-                log.info("[]: {} Bags to sync", node, bags.getCount());
+                log.info("[{}]: {} Bags to sync", node, bags.getCount());
 
                 // Update each bag
                 for (Bag bag : bags.getResults()) {
-                    log.trace("[]: Updating bag {}", node, bag.getUuid());
+                    log.trace("[{}]: Updating bag {}", node, bag.getUuid());
                     local.getBagAPI().updateBag(bag.getUuid(), bag);
                 }
             }
@@ -134,7 +134,7 @@ public class Synchronizer {
 
             if (response.isPresent()) {
                 Node n = response.get();
-                log.trace("[]: Updating Node", node);
+                log.trace("[{}]: Updating Node", node);
             }
 
         }
