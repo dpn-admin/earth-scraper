@@ -93,7 +93,7 @@ public class Downloader {
 
     @Scheduled(cron = "${cron.replicate:0 * * * * *}")
     private void requested() {
-        int page = 1;
+        int page;
         int pageSize = 10;
         Replication.Status status = Replication.Status.REQUESTED;
 
@@ -103,6 +103,7 @@ public class Downloader {
         params.put("page_size", String.valueOf(pageSize));
 
         for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
+            page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
             log.info("Getting {} replications from {}", status.getName(), node);
@@ -130,7 +131,7 @@ public class Downloader {
 
     @Scheduled(cron = "${cron.replicate:0 * * * * *}")
     private void received() {
-        int page = 1;
+        int page;
         int pageSize = 10;
         Replication.Status status = Replication.Status.RECEIVED;
 
@@ -140,6 +141,7 @@ public class Downloader {
         params.put("page_size", String.valueOf(pageSize));
 
         for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
+            page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
             log.info("Getting {} replications from {}", status.getName(), node);
@@ -166,7 +168,7 @@ public class Downloader {
 
     @Scheduled(cron = "${cron.replicate:0 * * * * *}")
     private void confirmed() {
-        int page = 1;
+        int page;
         int pageSize = 10;
         Replication.Status status = Replication.Status.CONFIRMED;
 
@@ -177,6 +179,7 @@ public class Downloader {
         params.put("order_by", "updated_on");
 
         for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
+            page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
             log.info("Getting {} replications from {}", status.getName(), node);
