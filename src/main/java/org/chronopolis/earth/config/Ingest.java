@@ -1,4 +1,4 @@
-package org.chronopolis.earth.models;
+package org.chronopolis.earth.config;
 
 /**
  * Ingest API Information for chronopolis
