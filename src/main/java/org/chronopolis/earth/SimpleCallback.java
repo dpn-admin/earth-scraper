@@ -35,6 +35,7 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
             errorType += " - " + retrofitError.getResponse().getStatus();
         }
         log.error("Error in HTTP call: [{}] {}", errorType, retrofitError.getUrl());
+        log.debug("", retrofitError.getCause());
         this.response = Optional.absent();
         latch.countDown();
     }
