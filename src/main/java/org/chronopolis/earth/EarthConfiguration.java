@@ -7,6 +7,7 @@ import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.LocalAPI;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.config.Dpn;
@@ -106,16 +107,21 @@ public class EarthConfiguration {
     }
 
     @Bean
-    RestAdapter local(Gson gson) {
+    LocalAPI local(Gson gson) {
         Dpn dpn = settings.getDpn();
         Endpoint local = dpn.getLocal();
         log.debug("Creating local adapter for root {}", local.getApiRoot());
-        return new RestAdapter.Builder()
+        RestAdapter adapter = new RestAdapter.Builder()
                 .setEndpoint(local.getApiRoot())
                 .setConverter(new GsonConverter(gson))
                 .setRequestInterceptor(new TokenInterceptor(local.getAuthKey()))
                 .setLogLevel(RestAdapter.LogLevel.NONE)
                 .build();
+
+        return new LocalAPI().setNode(local.getName())
+                .setBagAPI(adapter.create(BalustradeBag.class))
+                .setNodeAPI(adapter.create(BalustradeNode.class))
+                .setTransfersAPI(adapter.create(BalustradeTransfers.class));
     }
 
     @Bean

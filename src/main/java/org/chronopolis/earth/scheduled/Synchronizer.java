@@ -7,6 +7,7 @@ import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.LocalAPI;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Bag;
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import retrofit.RestAdapter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,6 +54,9 @@ public class Synchronizer {
     @Autowired
     NodeAPIs nodeAPIs;
 
+    @Autowired
+    LocalAPI local;
+
     // keep this disabled for the time being
     // @Scheduled(cron="${cron.sync:0 0 0 * * *}")
     public void synchronize() {
@@ -73,8 +78,15 @@ public class Synchronizer {
             if (response.isPresent()) {
                 Response<Replication> replications = response.get();
                 log.info("[]: {} Replications to sync", node, replications.getCount());
+
+                // update each replication
+                for (Replication replication : replications.getResults()) {
+                    log.trace("[]: Updating replication {}", node, replication.getReplicationId());
+                    local.getTransfersAPI().updateReplication(replication.getReplicationId(), replication);
+                }
             }
 
+            // TODO: Sync restore requests
             // api.getRestores(new HashMap());
         }
     }
@@ -95,9 +107,13 @@ public class Synchronizer {
             if (response.isPresent()) {
                 Response<Bag> bags = response.get();
                 log.info("[]: {} Bags to sync", node, bags.getCount());
-            }
 
-            // ourAPI.updateBag("uuid", bag, callback);
+                // Update each bag
+                for (Bag bag : bags.getResults()) {
+                    log.trace("[]: Updating bag {}", node, bag.getUuid());
+                    local.getBagAPI().updateBag(bag.getUuid(), bag);
+                }
+            }
         }
         Map<String, String> params = new ImmutableMap.Builder<String, String>()
                 .put("admin_node", "sample-node")
@@ -111,9 +127,16 @@ public class Synchronizer {
     private void syncNode() {
         Map<String, BalustradeNode> apis = nodeAPIs.getApiMap();
         for (String node : apis.keySet()) {
+            SimpleCallback<Node> cb = new SimpleCallback<>();
             BalustradeNode api = apis.get(node);
-            api.getNode(node);
-            // ourAPI.updateNode(node);
+            api.getNode(node, cb);
+            Optional<Node> response = cb.getResponse();
+
+            if (response.isPresent()) {
+                Node n = response.get();
+                log.trace("[]: Updating Node", node);
+            }
+
         }
 
     }
