@@ -49,7 +49,7 @@ public class EarthConfiguration {
 
     @Bean
     DateTimeFormatter formatter() {
-        return ISODateTimeFormat.basicDateTimeNoMillis().withZoneUTC();
+        return ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
     }
 
     @Bean
