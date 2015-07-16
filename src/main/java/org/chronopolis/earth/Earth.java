@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -22,8 +23,8 @@ import java.security.cert.X509Certificate;
  *
  * Created by shake on 11/13/14.
  */
-@SpringBootApplication
 @EnableConfigurationProperties
+@SpringBootApplication(exclude = {HibernateJpaAutoConfiguration.class})
 public class Earth implements CommandLineRunner {
 
     @Autowired
