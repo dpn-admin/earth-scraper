@@ -91,7 +91,7 @@ public class Downloader {
 
     // Scheduled tasks. Delegate to functions based on what state the replication is in
 
-    @Scheduled(cron = "${cron.replicate:0 * * * * *}")
+    @Scheduled(cron = "${earth.cron.replicate:0 * * * * *}")
     private void requested() {
         int page;
         int pageSize = 10;
@@ -129,7 +129,7 @@ public class Downloader {
 
     }
 
-    @Scheduled(cron = "${cron.replicate:0 * * * * *}")
+    @Scheduled(cron = "${earth.cron.replicate:0 * * * * *}")
     private void received() {
         int page;
         int pageSize = 10;
@@ -166,7 +166,7 @@ public class Downloader {
         }
     }
 
-    @Scheduled(cron = "${cron.replicate:0 * * * * *}")
+    @Scheduled(cron = "${earth.cron.replicate:0 * * * * *}")
     private void confirmed() {
         int page;
         int pageSize = 10;
