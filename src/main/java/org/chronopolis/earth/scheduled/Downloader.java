@@ -106,19 +106,18 @@ public class Downloader {
             page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
-            log.info("Getting {} replications from {}", status.getName(), node);
+            log.info("[{}] Getting {} replications", node, status.getName());
             do {
                 params.put("page", String.valueOf(page));
                 transfers = getTransfers(api, params);
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getUuid();
-                    log.info("Downloading");
 
                     try {
                         download(api, transfer);
                     } catch (InterruptedException | IOException e) {
-                        log.error("Error downloading {}::{}, skipping", from, uuid, e);
+                        log.error("[{}] Error downloading {}, skipping", from, uuid, e);
                     }
                 }
 
@@ -144,7 +143,7 @@ public class Downloader {
             page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
-            log.info("Getting {} replications from {}", status.getName(), node);
+            log.info("[{}] Getting {} replications", node, status.getName());
             do {
                 params.put("page", String.valueOf(page));
                 transfers = getTransfers(api, params);
@@ -156,7 +155,7 @@ public class Downloader {
                         untar(transfer);
                         update(api, transfer);
                     } catch (IOException e) {
-                        log.error("Error untarring {}::{}, skipping", from, uuid, e);
+                        log.error("[{}] Error untarring {}, skipping", from, uuid, e);
                     }
                 }
 
@@ -182,7 +181,7 @@ public class Downloader {
             page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
-            log.info("Getting {} replications from {}", status.getName(), node);
+            log.info("[{}] Getting {} replications", node, status.getName());
 
             do {
                 params.put("page", String.valueOf(page));
@@ -279,7 +278,6 @@ public class Downloader {
         String stage = settings.getStage();
         String depositor = transfer.getFromNode();
 
-
         // Read the manifests
         Path bag = Paths.get(stage, depositor, uuid);
         // TODO: Resolve named based off of transfer fixity
@@ -352,8 +350,11 @@ public class Downloader {
      * @throws InterruptedException
      */
     private void download(BalustradeTransfers api, Replication transfer) throws InterruptedException, IOException {
-        log.debug("Getting {} from {}\n", transfer.getUuid(), transfer.getLink());
         String stage = settings.getStage();
+        String uuid = transfer.getUuid();
+        String from = transfer.getFromNode();
+
+        log.debug("[{}] Downloading {} from {}\n", from, uuid, transfer.getLink());
 
         // Create the dir for the node if it doesn't exist
         Path nodeDir = Paths.get(stage, transfer.getFromNode());
@@ -361,7 +362,7 @@ public class Downloader {
             java.nio.file.Files.createDirectories(nodeDir);
         }
 
-        Path local = nodeDir.resolve(transfer.getUuid() + ".tar");
+        Path local = nodeDir.resolve(uuid + ".tar");
         String[] cmd = new String[]{"rsync",
                 "-aL",                                   // archive, follow links
                 "-e ssh -o 'PasswordAuthentication no'", // disable password auth
@@ -378,7 +379,7 @@ public class Downloader {
             stats = stringFromStream(p.getInputStream());
 
             if (exit != 0) {
-                log.error("There was an error rsyncing! exit value {}", exit);
+                log.error("[{}] There was an error rsyncing {}! exit value {}", from, uuid, exit);
                 String error = stringFromStream(p.getErrorStream());
                 log.error(error);
             } else {
