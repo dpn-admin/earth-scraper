@@ -81,6 +81,10 @@ public class CLIService implements DpnService {
         }
     }
 
+    /**
+     * Attempt to sync; Display text saying we can't if the profile is not loaded
+     *
+     */
     private void sync() {
         Synchronizer bean;
         try {
