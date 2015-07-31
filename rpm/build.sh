@@ -37,7 +37,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Only package releases
-jarfile=target/dpn-replication-$version-$release_type.jar
+jarfile=earth-driver/target/earth-driver-$version-$release_type.jar
 
 if [ ! -e $jarfile ]; then
     echo "Building latest jar..."
@@ -50,11 +50,15 @@ else
     echo "Jar already built"
 fi
 
+if [ -n $BUILD_NUMBER ]; then
+    BUILD_NUMBER=1
+fi
+
 
 # Copy the artifacts
 cp $jarfile rpm/$finaljar
-cp target/classes/application.yml rpm/$sources
-cp src/main/sh/dpn-replication.sh rpm/$sources
+cp earth-driver/target/classes/application.yml rpm/$sources
+cp earth-driver/src/main/sh/dpn-replication.sh rpm/$sources
 
 # cd back to where we started and build the rpm
 cd $rpmdir
