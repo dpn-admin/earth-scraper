@@ -1,6 +1,7 @@
 package org.chronopolis.earth.scheduled;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashCode;
@@ -251,6 +252,7 @@ public class Downloader {
             request.setDepositor(transfer.getFromNode());
             request.setName(transfer.getUuid());
             request.setLocation(transfer.getFromNode() + "/" + transfer.getUuid());
+            request.setReplicatingNodes(ImmutableList.of("ucsd"));
             chronopolis.stageBag(request);
         }
 
