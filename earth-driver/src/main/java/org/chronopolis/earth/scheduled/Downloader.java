@@ -20,6 +20,7 @@ import org.chronopolis.rest.api.IngestAPI;
 import org.chronopolis.rest.models.Bag;
 import org.chronopolis.rest.models.BagStatus;
 import org.chronopolis.rest.models.IngestRequest;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +68,7 @@ public class Downloader {
     private Response<Replication> getTransfers(BalustradeTransfers balustrade,
                                                Map<String, String> params) {
         SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
+        params.put("to_node", settings.getName());
         balustrade.getReplications(params, callback);
         Optional<Response<Replication>> response = callback.getResponse();
 
@@ -234,6 +236,7 @@ public class Downloader {
     private void store(BalustradeTransfers api, Replication transfer) {
         SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setStatus(Replication.Status.STORED);
+        transfer.setUpdatedAt(new DateTime());
         api.updateReplication(transfer.getReplicationId(), transfer, callback);
     }
 
@@ -297,6 +300,7 @@ public class Downloader {
         transfer.setBagValid(valid);
 
         SimpleCallback<Replication> callback = new SimpleCallback<>();
+        transfer.setUpdatedAt(new DateTime());
         api.updateReplication(transfer.getReplicationId(), transfer, callback);
     }
 
@@ -389,6 +393,7 @@ public class Downloader {
 
                 SimpleCallback<Replication> callback = new SimpleCallback<>();
                 transfer.setStatus(Replication.Status.RECEIVED);
+                transfer.setUpdatedAt(new DateTime());
                 api.updateReplication(transfer.getReplicationId(), transfer, callback);
             }
 
@@ -442,6 +447,7 @@ public class Downloader {
 
         // Do the update
         SimpleCallback<Replication> callback = new SimpleCallback<>();
+        transfer.setUpdatedAt(new DateTime());
         balustrade.updateReplication(transfer.getReplicationId(), transfer, callback);
         Optional<Replication> response = callback.getResponse();
 

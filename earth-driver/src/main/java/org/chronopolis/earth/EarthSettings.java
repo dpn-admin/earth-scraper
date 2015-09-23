@@ -16,6 +16,7 @@ public class EarthSettings {
 
     Boolean disableSNI;
     String stage;
+    String name;
     Ingest ingest;
     Dpn dpn;
 
@@ -55,4 +56,12 @@ public class EarthSettings {
         return this;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public EarthSettings setName(String name) {
+        this.name = name;
+        return this;
+    }
 }

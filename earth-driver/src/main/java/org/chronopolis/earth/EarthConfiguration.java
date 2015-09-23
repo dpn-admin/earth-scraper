@@ -75,6 +75,7 @@ public class EarthConfiguration {
                 .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
                 .registerTypeAdapter(Replication.Status.class, new ReplicationStatusSerializer())
                 .registerTypeAdapter(Replication.Status.class, new ReplicationStatusDeserializer())
+                .serializeNulls()
                 .create();
     }
 
