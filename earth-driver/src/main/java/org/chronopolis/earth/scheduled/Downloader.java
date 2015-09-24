@@ -6,6 +6,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -422,7 +423,7 @@ public class Downloader {
     }
 
     /**
-     * Digest the tarball and update the api
+     * Digest the tagmanifest and update the api
      *
      * @param transfer The replication transfer to update
      */
@@ -430,16 +431,38 @@ public class Downloader {
         // Get the files digest
         HashFunction func = Hashing.sha256();
         String stage = settings.getStage();
-        Path file = Paths.get(stage,
+        Path tarball = Paths.get(stage,
                 transfer.getFromNode(),
                 transfer.getUuid() + ".tar");
-        HashCode hash;
+        HashCode hash = null;
+        try {
+            TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball));
+            TarArchiveEntry entry;
+            while ((entry = tais.getNextTarEntry()) != null) {
+                if (entry.getName().equals(transfer.getUuid() + "/" + TAG_MANIFEST)) {
+                    // TODO: size = 1MB, in the event of absurdly large tag manifests
+                    int size = (int) entry.getSize();
+                    byte[] buf = new byte[size];
+                    Hasher hasher = Hashing.sha256().newHasher();
+                    tais.read(buf, 0, size);
+                    hasher.putBytes(buf);
+                    hash = hasher.hash();
+                    tais.close();
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        /*
         try {
             hash = Files.hash(file.toFile(), func);
         } catch (IOException e) {
             log.error("Error hashing file", e);
             return;
         }
+        */
 
         // Set the receipt
         String receipt = hash.toString();
