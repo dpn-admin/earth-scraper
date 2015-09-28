@@ -26,6 +26,7 @@ public class Bag {
     Map<String, String> fixities;
     DateTime createdAt;
     DateTime updatedAt;
+    String member;
 
     public Bag() {
     }
@@ -153,6 +154,15 @@ public class Bag {
 
     public Bag setUpdatedAt(DateTime updatedAt) {
         this.updatedAt = updatedAt;
+        return this;
+    }
+
+    public String getMember() {
+        return member;
+    }
+
+    public Bag setMember(String member) {
+        this.member = member;
         return this;
     }
 }
