@@ -28,11 +28,11 @@ public interface BalustradeBag {
     @GET("/api-v1/bag/")
     void getBags(@QueryMap Map<String, String> params, Callback<Response<Bag>> callback);
 
-    @POST("/api-v1/bag/{uuid}")
-    Bag createBag(@Path("uuid") String uuid, @Body Bag bag);
+    @POST("/api-v1/bag/")
+    Bag createBag(@Body Bag bag);
 
-    @POST("/api-v1/bag/{uuid}")
-    void createBag(@Path("uuid") String uuid, @Body Bag bag, Callback<Bag> callback);
+    @POST("/api-v1/bag/")
+    void createBag(@Body Bag bag, Callback<Bag> callback);
 
     @GET("/api-v1/bag/{uuid}")
     Bag getBag(@Path("uuid") String uuid);
