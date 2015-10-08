@@ -16,8 +16,8 @@ public class Replication {
     String fixityAlgorithm;
     String fixityNonce;
     String fixityValue;
-    boolean fixityAccept;
-    boolean bagValid;
+    Boolean fixityAccept;
+    Boolean bagValid;
     String protocol;
     String link;
     DateTime createdAt;
@@ -72,20 +72,20 @@ public class Replication {
         return this;
     }
 
-    public boolean isBagValid() {
-        return bagValid;
+    public Boolean isBagValid() {
+        return bagValid != null && bagValid;
     }
 
-    public Replication setBagValid(boolean bagValid) {
+    public Replication setBagValid(Boolean bagValid) {
         this.bagValid = bagValid;
         return this;
     }
 
-    public boolean isFixityAccept() {
-        return fixityAccept;
+    public Boolean isFixityAccept() {
+        return fixityAccept != null && fixityAccept;
     }
 
-    public Replication setFixityAccept(boolean fixityAccept) {
+    public Replication setFixityAccept(Boolean fixityAccept) {
         this.fixityAccept = fixityAccept;
         return this;
     }
