@@ -154,10 +154,24 @@ public class Downloader {
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getUuid();
+                    // transfer.setBagValid(null);
 
                     try {
-                        untar(transfer);
+                        // update the tag manifest fixity
+                        // if tag is valid, untar and validate
+                        // else reject
                         update(api, transfer);
+                        if (transfer.isFixityAccept()) {
+                            untar(transfer);
+                            validate(api, transfer);
+                        } else {
+                            if (transfer.status() != Replication.Status.CANCELLED) {
+                                transfer.setStatus(Replication.Status.CANCELLED);
+                            }
+
+                            SimpleCallback<Replication> callback = new SimpleCallback();
+                            api.updateReplication(transfer.getReplicationId(), transfer, callback);
+                        }
                     } catch (IOException e) {
                         log.error("[{}] Error untarring {}, skipping", from, uuid, e);
                     }
@@ -216,7 +230,6 @@ public class Downloader {
                         }
                     } else {
                         log.info("Bag not found in chronopolis, validating and pushing");
-                        validate(api, transfer);
                         push(transfer);
                     }
                 }
