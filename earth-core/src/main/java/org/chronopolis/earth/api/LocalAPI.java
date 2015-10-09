@@ -11,6 +11,7 @@ public class LocalAPI {
     BalustradeBag bagAPI;
     BalustradeNode nodeAPI;
     BalustradeTransfers transfersAPI;
+    BalustradeMember memberAPI;
 
     public LocalAPI() {
     }
@@ -48,6 +49,15 @@ public class LocalAPI {
 
     public LocalAPI setTransfersAPI(BalustradeTransfers transfersAPI) {
         this.transfersAPI = transfersAPI;
+        return this;
+    }
+
+    public BalustradeMember getMemberAPI() {
+        return memberAPI;
+    }
+
+    public LocalAPI setMemberAPI(BalustradeMember memberAPI) {
+        this.memberAPI = memberAPI;
         return this;
     }
 }
