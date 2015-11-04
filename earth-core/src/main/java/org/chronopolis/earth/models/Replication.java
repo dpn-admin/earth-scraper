@@ -155,13 +155,13 @@ public class Replication {
 
 
     public enum Status {
-        REQUESTED("Requested"),
-        REJECTED("Rejected"),
-        RECEIVED("Received"),
-        CONFIRMED("Confirmed"),
-        STORED("Stored"),
-        CANCELLED("Cancelled"),
-        UNKNOWN("Unknown");
+        REQUESTED("requested"),
+        REJECTED("rejected"),
+        RECEIVED("received"),
+        CONFIRMED("confirmed"),
+        STORED("stored"),
+        CANCELLED("cancelled"),
+        UNKNOWN("unknown");
 
         private final String name;
 
