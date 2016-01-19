@@ -97,8 +97,9 @@ public class EarthConfiguration {
         for (Endpoint endpoint : dpn.getRemote()) {
             log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
 
-            OkHttpClient client = new OkHttpClient();
-            client.interceptors().add(new OkTokenInterceptor(endpoint.getAuthKey()));
+            OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(new OkTokenInterceptor(endpoint.getAuthKey()))
+                .build();
 
             Retrofit adapter = new Retrofit.Builder()
                     .baseUrl(endpoint.getApiRoot())
@@ -124,8 +125,9 @@ public class EarthConfiguration {
         Endpoint local = dpn.getLocal();
         log.debug("Creating local adapter for root {}", local.getApiRoot());
 
-        OkHttpClient client = new OkHttpClient();
-        client.interceptors().add(new OkTokenInterceptor(local.getAuthKey()));
+        OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new OkTokenInterceptor(local.getAuthKey()))
+            .build();
 
         Retrofit adapter = new Retrofit.Builder()
                 .baseUrl(local.getApiRoot())
