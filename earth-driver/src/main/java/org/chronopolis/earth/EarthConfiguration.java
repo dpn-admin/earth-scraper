@@ -3,6 +3,9 @@ package org.chronopolis.earth;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
+import okhttp3.Response;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
@@ -29,7 +32,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import retrofit.RestAdapter;
 import retrofit.converter.GsonConverter;
+import retrofit2.GsonConverterFactory;
+import retrofit2.Retrofit;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,20 +86,25 @@ public class EarthConfiguration {
     }
 
     @Bean
-    List<RestAdapter> adapters(TransferAPIs transferAPIs,
+    List<Retrofit> adapters(TransferAPIs transferAPIs,
                                NodeAPIs nodeAPIs,
                                BagAPIs bagAPIs,
                                Gson gson) {
-        List<RestAdapter> adapters = new ArrayList<>();
+        List<Retrofit> adapters = new ArrayList<>();
         Dpn dpn = settings.getDpn();
+
 
         for (Endpoint endpoint : dpn.getRemote()) {
             log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
-            RestAdapter adapter = new RestAdapter.Builder()
-                    .setEndpoint(endpoint.getApiRoot())
-                    .setConverter(new GsonConverter(gson))
-                    .setRequestInterceptor(new TokenInterceptor(endpoint.getAuthKey()))
-                    .setLogLevel(RestAdapter.LogLevel.NONE)
+
+            OkHttpClient client = new OkHttpClient();
+            client.interceptors().add(new OkTokenInterceptor(endpoint.getAuthKey()));
+
+            Retrofit adapter = new Retrofit.Builder()
+                    .baseUrl(endpoint.getApiRoot())
+                    .addConverterFactory(GsonConverterFactory.create(gson))
+                    .client(client)
+                    // .setLogLevel(RestAdapter.LogLevel.NONE)
                     // .setExecutors(Executors.newCachedThreadPool(), Executors.newSingleThreadExecutor())
                     .build();
 
@@ -112,11 +123,15 @@ public class EarthConfiguration {
         Dpn dpn = settings.getDpn();
         Endpoint local = dpn.getLocal();
         log.debug("Creating local adapter for root {}", local.getApiRoot());
-        RestAdapter adapter = new RestAdapter.Builder()
-                .setEndpoint(local.getApiRoot())
-                .setConverter(new GsonConverter(gson))
-                .setRequestInterceptor(new TokenInterceptor(local.getAuthKey()))
-                .setLogLevel(RestAdapter.LogLevel.NONE)
+
+        OkHttpClient client = new OkHttpClient();
+        client.interceptors().add(new OkTokenInterceptor(local.getAuthKey()));
+
+        Retrofit adapter = new Retrofit.Builder()
+                .baseUrl(local.getApiRoot())
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .client(client)
+                // .setLogLevel(RestAdapter.LogLevel.NONE)
                 .build();
 
         return new LocalAPI().setNode(local.getName())
@@ -126,6 +141,7 @@ public class EarthConfiguration {
     }
 
     @Bean
+    // TODO: Migrate to retrofit2
     IngestAPI ingestAPI() {
         Ingest api = settings.getIngest();
         // TODO: Get credentials

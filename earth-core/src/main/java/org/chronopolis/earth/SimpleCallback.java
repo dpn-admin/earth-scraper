@@ -3,8 +3,8 @@ package org.chronopolis.earth;
 import com.google.common.base.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import retrofit.Callback;
-import retrofit.RetrofitError;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -23,19 +23,23 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
     private CountDownLatch latch = new CountDownLatch(1);
 
     @Override
-    public void success(E eResponse, retrofit.client.Response response) {
-        this.response = Optional.of(eResponse);
+    public void onResponse(Response<E> response) {
+        log.debug("Successfully completed HTTP Call with response code {} - {} ",
+                response.code(),
+                response.message());
+
+        if (response.isSuccess()) {
+            this.response = Optional.of(response.body());
+        } else {
+            this.response = Optional.absent();
+        }
+
         latch.countDown();
     }
 
     @Override
-    public void failure(RetrofitError retrofitError) {
-        String errorType = retrofitError.getKind().toString();
-        if (retrofitError.getKind() == RetrofitError.Kind.HTTP) {
-            errorType += " - " + retrofitError.getResponse().getStatus();
-        }
-        log.error("Error in HTTP call: [{}] {}", errorType, retrofitError.getUrl());
-        log.debug("", retrofitError.getCause());
+    public void onFailure(Throwable throwable) {
+        log.error("Error in HTTP Call: ", throwable);
         this.response = Optional.absent();
         latch.countDown();
     }
@@ -50,4 +54,5 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
 
         return response;
     }
+
 }

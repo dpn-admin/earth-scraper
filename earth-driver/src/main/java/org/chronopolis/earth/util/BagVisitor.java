@@ -1,14 +1,17 @@
 package org.chronopolis.earth.util;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
+import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import retrofit2.Call;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -18,7 +21,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * File visitor which searches for bags
- *
+ * <p/>
  * Created by shake on 6/19/15.
  */
 public class BagVisitor extends SimpleFileVisitor<Path> {
@@ -97,21 +100,32 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
 
         boolean terminal;
         ImmutableMap<String, String> params =
-                ImmutableMap.of("uuid",     path.getFileName().toString(),
-                                "order_by", "updated_at");
-        Response<Replication> replications = current.getReplications(params);
+                ImmutableMap.of("uuid", path.getFileName().toString(),
+                        "order_by", "updated_at");
+        SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
+        Call<Response<Replication>> call = current.getReplications(params);
+        call.enqueue(callback);
+        Optional<Response<Replication>> response = callback.getResponse();
 
-        if (replications.getResults().isEmpty()) {
-            // No record... ???
-            terminal = false;
+        if (response.isPresent()) {
+            Response<Replication> replications = response.get();
+            if (replications.getResults().isEmpty()) {
+                // No record... don't make any attempt
+                terminal = false;
+            } else {
+                Replication replication = replications.getResults().get(0);
+
+                // Check the state of the replication
+                terminal = replication.status() == Replication.Status.STORED
+                        || replication.status() == Replication.Status.CANCELLED
+                        || replication.status() == Replication.Status.REJECTED;
+            }
+
         } else {
-            Replication replication = replications.getResults().get(0);
-
-            // Check the state of the replication
-            terminal = replication.status() == Replication.Status.STORED
-                    || replication.status() == Replication.Status.CANCELLED
-                    || replication.status() == Replication.Status.REJECTED;
+            // http issue, wait for the next time we check
+            terminal = false;
         }
+
 
         return terminal;
     }

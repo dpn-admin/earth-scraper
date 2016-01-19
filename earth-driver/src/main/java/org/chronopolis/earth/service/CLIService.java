@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import retrofit2.Call;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -105,7 +106,8 @@ public class CLIService implements DpnService {
         log.info("Current Admin node: {}", name);
         SimpleCallback<Node> callback = new SimpleCallback<>();
 
-        api.getNode(name, callback);
+        Call<Node> call = api.getNode(name);
+        call.enqueue(callback);
         Optional<Node> response = callback.getResponse();
 
         // wtb java 8 flat map ;_;
@@ -125,7 +127,8 @@ public class CLIService implements DpnService {
         log.info("Current Admin node: {}", name);
         SimpleCallback<Response<Bag>> callback = new SimpleCallback<>();
 
-        api.getBags(ImmutableMap.of("admin_node", name), callback);
+        Call<Response<Bag>> call = api.getBags(ImmutableMap.of("admin_node", name));
+        call.enqueue(callback);
         Optional<Response<Bag>> response = callback.getResponse();
 
         if (response.isPresent()) {
@@ -147,7 +150,8 @@ public class CLIService implements DpnService {
         BalustradeTransfers api = entry.getValue();
         SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
 
-        api.getReplications(new HashMap<String, String>(), callback);
+        Call<Response<Replication>> call = api.getReplications(new HashMap<String, String>());
+        call.enqueue(callback);
         Optional<Response<Replication>> response = callback.getResponse();
 
         if (response.isPresent()) {

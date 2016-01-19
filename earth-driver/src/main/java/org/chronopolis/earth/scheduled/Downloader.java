@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import retrofit2.Call;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -70,7 +71,8 @@ public class Downloader {
                                                Map<String, String> params) {
         SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
         params.put("to_node", settings.getName());
-        balustrade.getReplications(params, callback);
+        Call<Response<Replication>> call = balustrade.getReplications(params);
+        call.enqueue(callback);
         Optional<Response<Replication>> response = callback.getResponse();
 
         // get the actual response OR an empty response (in the event of failure)
@@ -169,8 +171,9 @@ public class Downloader {
                                 transfer.setStatus(Replication.Status.CANCELLED);
                             }
 
-                            SimpleCallback<Replication> callback = new SimpleCallback();
-                            api.updateReplication(transfer.getReplicationId(), transfer, callback);
+                            SimpleCallback<Replication> callback = new SimpleCallback<>();
+                            Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
+                            call.enqueue(callback);
                         }
                     } catch (IOException e) {
                         log.error("[{}] Error untarring {}, skipping", from, uuid, e);
@@ -251,7 +254,8 @@ public class Downloader {
         SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setStatus(Replication.Status.STORED);
         transfer.setUpdatedAt(new DateTime());
-        api.updateReplication(transfer.getReplicationId(), transfer, callback);
+        Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
+        call.enqueue(callback);
     }
 
 
@@ -315,7 +319,8 @@ public class Downloader {
 
         SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setUpdatedAt(new DateTime());
-        api.updateReplication(transfer.getReplicationId(), transfer, callback);
+        Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
+        call.enqueue(callback);
     }
 
     /**
@@ -408,7 +413,8 @@ public class Downloader {
                 SimpleCallback<Replication> callback = new SimpleCallback<>();
                 transfer.setStatus(Replication.Status.RECEIVED);
                 transfer.setUpdatedAt(new DateTime());
-                api.updateReplication(transfer.getReplicationId(), transfer, callback);
+                Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
+                call.enqueue(callback);
             }
 
             log.debug("Rsync stats:\n {}", stats);
@@ -484,7 +490,8 @@ public class Downloader {
         // Do the update
         SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setUpdatedAt(new DateTime());
-        balustrade.updateReplication(transfer.getReplicationId(), transfer, callback);
+        Call<Replication> call = balustrade.updateReplication(transfer.getReplicationId(), transfer);
+        call.enqueue(callback);
         Optional<Replication> response = callback.getResponse();
 
         if (response.isPresent()) {

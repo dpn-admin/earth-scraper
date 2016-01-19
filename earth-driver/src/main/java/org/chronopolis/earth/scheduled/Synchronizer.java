@@ -21,11 +21,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import retrofit.RestAdapter;
+import retrofit2.Call;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -70,9 +68,11 @@ public class Synchronizer {
         for (String node: transferAPIs.getApiMap().keySet()) {
             BalustradeTransfers api = transferAPIs.getApiMap().get(node);
             SimpleCallback<Response<Replication>> cb = new SimpleCallback<>();
-            api.getReplications(ImmutableMap.of(
+            Call<Response<Replication>> call = api.getReplications(ImmutableMap.of(
                     "admin_node", node,
-                    "after", formatter.print(after)), cb);
+                    "after", formatter.print(after)));
+
+            call.enqueue(cb);
 
             Optional<Response<Replication>> response = cb.getResponse();
             if (response.isPresent()) {
@@ -99,9 +99,11 @@ public class Synchronizer {
         for (String node : apis.keySet()) {
             SimpleCallback<Response<Bag>> cb = new SimpleCallback<>();
             BalustradeBag api = apis.get(node);
-            api.getBags(ImmutableMap.of(
+            Call<Response<Bag>> call = api.getBags(ImmutableMap.of(
                     "admin_node", node,
-                    "after", formatter.print(after)), cb);
+                    "after", formatter.print(after)));
+
+            call.enqueue(cb);
 
             Optional<Response<Bag>> response = cb.getResponse();
             if (response.isPresent()) {
@@ -129,7 +131,8 @@ public class Synchronizer {
         for (String node : apis.keySet()) {
             SimpleCallback<Node> cb = new SimpleCallback<>();
             BalustradeNode api = apis.get(node);
-            api.getNode(node, cb);
+            Call<Node> call = api.getNode(node);
+            call.enqueue(cb);
             Optional<Node> response = cb.getResponse();
 
             if (response.isPresent()) {
