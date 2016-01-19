@@ -2,13 +2,13 @@ package org.chronopolis.earth.api;
 
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Response;
-import retrofit.Callback;
-import retrofit.http.Body;
-import retrofit.http.GET;
-import retrofit.http.POST;
-import retrofit.http.PUT;
-import retrofit.http.Path;
-import retrofit.http.QueryMap;
+import retrofit2.Call;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.POST;
+import retrofit2.http.PUT;
+import retrofit2.http.Path;
+import retrofit2.http.QueryMap;
 
 import java.util.Map;
 
@@ -22,28 +22,16 @@ import java.util.Map;
  */
 public interface BalustradeBag {
 
-    @GET("/api-v1/bag/")
-    Response<Bag> getBags(@QueryMap Map<String, String> params);
+    @GET("api-v1/bag")
+    Call<Response<Bag>> getBags(@QueryMap Map<String, String> params);
 
-    @GET("/api-v1/bag/")
-    void getBags(@QueryMap Map<String, String> params, Callback<Response<Bag>> callback);
+    @POST("api-v1/bag")
+    Call<Bag> createBag(@Body Bag bag);
 
-    @POST("/api-v1/bag/")
-    Bag createBag(@Body Bag bag);
+    @GET("api-v1/bag/{uuid}")
+    Call<Bag> getBag(@Path("uuid") String uuid);
 
-    @POST("/api-v1/bag/")
-    void createBag(@Body Bag bag, Callback<Bag> callback);
-
-    @GET("/api-v1/bag/{uuid}")
-    Bag getBag(@Path("uuid") String uuid);
-
-    @GET("/api-v1/bag/{uuid}")
-    void getBag(@Path("uuid") String uuid, Callback<Bag> callback);
-
-    @PUT("/api-v1/bag/{uuid}")
-    Bag updateBag(@Path("uuid") String uuid, @Body Bag bag);
-
-    @PUT("/api-v1/bag/{uuid}")
-    void updateBag(@Path("uuid") String uuid, @Body Bag bag, Callback<Bag> callback);
+    @PUT("api-v1/bag/{uuid}")
+    Call<Bag> updateBag(@Path("uuid") String uuid, @Body Bag bag);
 
 }
