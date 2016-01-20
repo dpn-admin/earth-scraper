@@ -33,6 +33,7 @@ import retrofit2.Retrofit;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Configuration for our beans. Mostly just creation of the rest adapters to
@@ -141,6 +142,7 @@ public class EarthConfiguration {
     IngestAPI ingestAPI() {
         Ingest api = settings.getIngest();
         OkHttpClient client = new OkHttpClient.Builder()
+                .readTimeout(5, TimeUnit.HOURS)
                 .addInterceptor(new OkBasicInterceptor(
                         api.getUsername(),
                         api.getPassword()))
