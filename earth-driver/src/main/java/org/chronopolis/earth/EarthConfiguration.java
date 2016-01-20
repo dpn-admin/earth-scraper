@@ -3,9 +3,7 @@ package org.chronopolis.earth;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
-import okhttp3.Response;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
@@ -30,12 +28,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import retrofit.RestAdapter;
-import retrofit.converter.GsonConverter;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -143,17 +138,20 @@ public class EarthConfiguration {
     }
 
     @Bean
-    // TODO: Migrate to retrofit2
     IngestAPI ingestAPI() {
         Ingest api = settings.getIngest();
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(new OkBasicInterceptor(
+                        api.getUsername(),
+                        api.getPassword()))
+                .build();
         // TODO: Get credentials
         log.debug("Staging: {}", settings.getStage());
         log.debug("Ingest Settings: {} {}", api.getEndpoint(), api.getUsername());
-        RestAdapter adapter = new RestAdapter.Builder()
-                .setEndpoint(api.getEndpoint())
-                .setRequestInterceptor(new CredentialRequestInterceptor(
-                        api.getUsername(),
-                        api.getPassword()))
+        Retrofit adapter = new Retrofit.Builder()
+                .baseUrl(api.getEndpoint())
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
                 // .setLogLevel(RestAdapter.LogLevel.FULL)
                 .build();
 
