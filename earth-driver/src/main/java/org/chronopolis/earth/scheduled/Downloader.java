@@ -25,6 +25,7 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -41,6 +42,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -222,8 +224,17 @@ public class Downloader {
                     // TODO: Query parameters for bag
                     // Since bags are named by uuids, this should be unique
                     // but it's still a list so we get that and check if it's empty
-                    List<Bag> bags = chronopolis.getBags(chronParams)
-                            .getContent();
+                    List<Bag> bags;
+                    Call<PageImpl<Bag>> bagCall = chronopolis.getBags(chronParams);
+                    try {
+                        bags = bagCall.execute() // execute the http request
+                                .body()          // get the response body
+                                .getContent();   // get the content of the response
+                    } catch (IOException e) {
+                        log.error("Error getting list of bags from a DPN Registry", e);
+                        bags = new ArrayList<>();
+                    }
+
 
                     if (!bags.isEmpty()) {
                         Bag b = bags.get(0);
