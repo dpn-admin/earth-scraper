@@ -24,6 +24,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Component;
 import retrofit2.Call;
 
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -65,6 +66,8 @@ public class Synchronizer {
 
     private void syncTransfers() {
         DateTime after = DateTime.now().minusWeeks(1);
+        BalustradeTransfers transfers = local.getTransfersAPI();
+
         for (String node: transferAPIs.getApiMap().keySet()) {
             BalustradeTransfers api = transferAPIs.getApiMap().get(node);
             SimpleCallback<Response<Replication>> cb = new SimpleCallback<>();
@@ -81,8 +84,26 @@ public class Synchronizer {
 
                 // update each replication
                 for (Replication replication : replications.getResults()) {
+                    SimpleCallback<Replication> rcb = new SimpleCallback<>();
                     log.trace("[{}]: Updating replication {}", node, replication.getReplicationId());
-                    local.getTransfersAPI().updateReplication(replication.getReplicationId(), replication);
+
+                    // First check if the replication exists
+                    Call<Replication> syncCall;
+                    Call<Replication> get = transfers.getReplication(replication.getReplicationId());
+                    get.enqueue(rcb);
+                    Optional<Replication> replResponse = rcb.getResponse();
+
+                    if (replResponse.isPresent()) {
+                        syncCall = transfers.updateReplication(replication.getReplicationId(), replication);
+                    } else {
+                        syncCall = transfers.createReplication(replication);
+                    }
+
+                    try {
+                        syncCall.execute();
+                    } catch (IOException e) {
+                        log.error("Error in call", e);
+                    }
                 }
             }
 
@@ -94,8 +115,9 @@ public class Synchronizer {
     private void syncBags() {
         // Temporary placeholder for when we sync
         // we'll want a better way to do this
-        DateTime after = DateTime.now().minusWeeks(1);
+        DateTime after = new DateTime(0); // DateTime.now().minusWeeks(1);
         Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
+        BalustradeBag bagAPI = local.getBagAPI();
         for (String node : apis.keySet()) {
             SimpleCallback<Response<Bag>> cb = new SimpleCallback<>();
             BalustradeBag api = apis.get(node);
@@ -113,13 +135,27 @@ public class Synchronizer {
                 // Update each bag
                 for (Bag bag : bags.getResults()) {
                     log.trace("[{}]: Updating bag {}", node, bag.getUuid());
-                    local.getBagAPI().updateBag(bag.getUuid(), bag);
+                    SimpleCallback<Bag> bagCB = new SimpleCallback<>();
+
+                    Call<Bag> sync;
+                    Call<Bag> get = bagAPI.getBag(bag.getUuid());
+                    get.enqueue(bagCB);
+                    Optional<Bag> bagResponse = bagCB.getResponse();
+
+                    if (bagResponse.isPresent()) {
+                        sync = bagAPI.updateBag(bag.getUuid(), bag);
+                    } else {
+                        sync = bagAPI.createBag(bag);
+                    }
+
+                    try {
+                        sync.execute();
+                    } catch (IOException e) {
+                        log.error("Error in call", e);
+                    }
                 }
             }
         }
-        Map<String, String> params = new ImmutableMap.Builder<String, String>()
-                .put("admin_node", "sample-node")
-                .build();
     }
 
     /**
