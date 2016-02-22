@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -24,13 +25,21 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
 
     @Override
     public void onResponse(Response<E> response) {
-        log.debug("Successfully completed HTTP Call with response code {} - {} ",
+        if (response.isSuccess()) {
+            log.debug("Successfully completed HTTP Call with response code {} - {} ",
                 response.code(),
                 response.message());
 
-        if (response.isSuccess()) {
             this.response = Optional.of(response.body());
         } else {
+            String errorBody;
+            try {
+                errorBody = response.errorBody().string();
+            } catch (IOException e) {
+                errorBody = e.getMessage();
+            }
+
+            log.warn("HTTP call was not successful {}", response.code(), errorBody);
             this.response = Optional.absent();
         }
 
