@@ -482,20 +482,12 @@ public class Downloader {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        /*
-        try {
-            hash = Files.hash(file.toFile(), func);
-        } catch (IOException e) {
-            log.error("Error hashing file", e);
+            log.error("Error trying to get receipt for bag {}", transfer.getUuid(), e);
             return;
         }
-        */
 
         // Set the receipt
-        String receipt = hash.toString();
+        String receipt = hash != null ? hash.toString() : "invalid-bag";
         transfer.setFixityValue(receipt);
 
         // Do the update
