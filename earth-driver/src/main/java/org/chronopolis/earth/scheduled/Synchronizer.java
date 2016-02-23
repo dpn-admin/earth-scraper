@@ -14,6 +14,7 @@ import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.util.LastSync;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ import java.util.Map;
 
 /**
  * TODO: Make sure we only sync items which the remote node is the admin node of
+ * TODO: DateTime -> LocalDate
  * Disabled temporarily
  *
  *
@@ -56,24 +58,46 @@ public class Synchronizer {
     @Autowired
     LocalAPI local;
 
+    LastSync lastSync;
+
     // keep this disabled for the time being
     // @Scheduled(cron="${cron.sync:0 0 0 * * *}")
     public void synchronize() {
+        readLastSync();
         syncNode();
-        syncBags();
+        LastSync sync = syncBags();
         syncTransfers();
+        writeLastSync(sync);
+    }
+
+    private void readLastSync() {
+        try {
+            lastSync = LastSync.read();
+        } catch (IOException e) {
+            log.error("Unable to read last sync!", e);
+            lastSync = new LastSync();
+        }
+    }
+
+    private void writeLastSync(LastSync sync) {
+        try {
+            sync.write();
+        } catch (IOException e) {
+            log.error("Unable to write last sync!", e);
+        }
     }
 
     private void syncTransfers() {
-        DateTime after = DateTime.now().minusWeeks(1);
         BalustradeTransfers transfers = local.getTransfersAPI();
 
         for (String node: transferAPIs.getApiMap().keySet()) {
+            String after = lastSync.getLastSync(node);
             BalustradeTransfers api = transferAPIs.getApiMap().get(node);
             SimpleCallback<Response<Replication>> cb = new SimpleCallback<>();
             Call<Response<Replication>> call = api.getReplications(ImmutableMap.of(
                     "admin_node", node,
-                    "after", formatter.print(after)));
+                    "after", after));
+                    // "after", formatter.print(after)));
 
             call.enqueue(cb);
 
@@ -112,18 +136,22 @@ public class Synchronizer {
         }
     }
 
-    private void syncBags() {
+    private LastSync syncBags() {
         // Temporary placeholder for when we sync
         // we'll want a better way to do this
-        DateTime after = new DateTime(0); // DateTime.now().minusWeeks(1);
-        Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
+        LastSync newSyncs = new LastSync();
         BalustradeBag bagAPI = local.getBagAPI();
+        Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
         for (String node : apis.keySet()) {
+            boolean update = true;
+            String after = lastSync.getLastSync(node);
+
             SimpleCallback<Response<Bag>> cb = new SimpleCallback<>();
             BalustradeBag api = apis.get(node);
             Call<Response<Bag>> call = api.getBags(ImmutableMap.of(
                     "admin_node", node,
-                    "after", formatter.print(after)));
+                    "after", after));
+                    // "after", formatter.print(after)));
 
             call.enqueue(cb);
 
@@ -151,11 +179,23 @@ public class Synchronizer {
                     try {
                         sync.execute();
                     } catch (IOException e) {
+                        update = false;
                         log.error("Error in call", e);
                     }
                 }
+            } else {
+                update = false;
             }
+
+            if (update) {
+                newSyncs.addLastSync(node, DateTime.now());
+            } else {
+                newSyncs.addLastSync(node, lastSync.getLastSync(node));
+            }
+
         }
+
+        return newSyncs;
     }
 
     /**
