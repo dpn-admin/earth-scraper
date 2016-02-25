@@ -94,6 +94,21 @@ public class EarthConfiguration {
             log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
 
             OkHttpClient client = new OkHttpClient.Builder()
+                    /*
+                    .addInterceptor(new Interceptor() {
+                        @Override
+                        public Response intercept(Chain chain) throws IOException {
+                            Request req = chain.request();
+                            log.debug("[{}] {}", req.method(), req.url());
+
+                            if (Objects.equals(req.method(), "PUT")) {
+                                Buffer b = new Buffer();
+                                req.body().writeTo(b);
+                                log.debug("{}", b.readUtf8());
+                            }
+                            return chain.proceed(req);
+                        }
+                    })*/
                 .addInterceptor(new OkTokenInterceptor(endpoint.getAuthKey()))
                 .build();
 
@@ -122,6 +137,21 @@ public class EarthConfiguration {
         log.debug("Creating local adapter for root {}", local.getApiRoot());
 
         OkHttpClient client = new OkHttpClient.Builder()
+                /*
+            .addInterceptor(new Interceptor() {
+                        @Override
+                        public Response intercept(Chain chain) throws IOException {
+                            Request req = chain.request();
+                            log.debug("[{}] {}", req.method(), req.url());
+                            if (Objects.equals(req.method(), "PUT")
+                                    || Objects.equals(req.method(), "POST")) {
+                                Buffer b = new Buffer();
+                                req.body().writeTo(b);
+                                log.debug("{}", b.readUtf8());
+                            }
+                            return chain.proceed(req);
+                        }
+            })*/
             .addInterceptor(new OkTokenInterceptor(local.getAuthKey()))
             .build();
 

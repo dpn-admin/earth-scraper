@@ -11,6 +11,8 @@ import java.util.concurrent.CountDownLatch;
 
 /**
  * Implementation of a Callback and ResponseGetter
+ * TODO: Try using a Monitor from guava instead of a countdown latch
+ *       It should allow us to use a callback multiple times
  *
  * Upon receiving the HTTP response we save the object or
  * log the error
@@ -26,6 +28,7 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
     @Override
     public void onResponse(Response<E> response) {
         if (response.isSuccess()) {
+            // TODO: HTTP {GET/POST/PUT/etc}
             log.debug("Successfully completed HTTP Call with response code {} - {} ",
                 response.code(),
                 response.message());
