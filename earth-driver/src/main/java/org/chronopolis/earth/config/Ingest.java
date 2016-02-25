@@ -10,6 +10,7 @@ public class Ingest {
     String username;
     String password;
     String endpoint;
+    String node;
 
     public String getUsername() {
         return username;
@@ -35,6 +36,15 @@ public class Ingest {
 
     public Ingest setEndpoint(String endpoint) {
         this.endpoint = endpoint;
+        return this;
+    }
+
+    public String getNode() {
+        return node;
+    }
+
+    public Ingest setNode(String node) {
+        this.node = node;
         return this;
     }
 }

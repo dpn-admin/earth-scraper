@@ -15,6 +15,7 @@ import org.chronopolis.earth.EarthSettings;
 import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.config.Ingest;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.rest.api.IngestAPI;
@@ -279,13 +280,19 @@ public class Downloader {
     private void push(Replication transfer) {
         if (transfer.isFixityAccept() && transfer.isBagValid()) {
             log.info("Bag is valid, pushing to chronopolis");
+            Ingest ingest = settings.getIngest();
+
             // push to chronopolis
             IngestRequest request = new IngestRequest();
             request.setDepositor(transfer.getFromNode());
             request.setName(transfer.getUuid());
             request.setLocation(transfer.getFromNode() + "/" + transfer.getUuid());
-            request.setReplicatingNodes(ImmutableList.of("ucsd"));
-            chronopolis.stageBag(request);
+            request.setReplicatingNodes(ImmutableList.of(ingest.getNode()));
+
+            // We don't really need to check the result of this unless it fails,
+            // which shouldn't matter as the state simply won't update
+            Call<Bag> call = chronopolis.stageBag(request);
+            call.enqueue(new SimpleCallback<>());
         }
 
     }

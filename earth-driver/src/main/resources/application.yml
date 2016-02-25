@@ -5,6 +5,7 @@ earth:
     endpoint: https://localhost:8080
     username: admin
     password: example-password
+    node: uscd-dpn
   # DPN RESTful servers to connect to
   dpn:
     local:
