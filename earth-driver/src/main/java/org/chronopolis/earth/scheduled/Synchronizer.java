@@ -62,7 +62,7 @@ public class Synchronizer {
     LastSync lastSync;
 
     // keep this disabled for the time being
-    @Scheduled(cron="${cron.sync:0 0 0 * * *}")
+    @Scheduled(cron="${earth.cron.sync:0 0 0 * * *}")
     public void synchronize() {
         readLastSync();
         syncNode();
@@ -96,7 +96,7 @@ public class Synchronizer {
             BalustradeTransfers api = transferAPIs.getApiMap().get(node);
             SimpleCallback<Response<Replication>> cb = new SimpleCallback<>();
             Call<Response<Replication>> call = api.getReplications(ImmutableMap.of(
-                    "admin_node", node,
+                    "from_node", node,
                     "after", after));
                     // "after", formatter.print(after)));
 
