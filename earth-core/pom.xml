@@ -10,7 +10,6 @@
         <version>1.0.0-RELEASE</version>
     </parent>
 
-    <groupId>org.chronopolis</groupId>
     <artifactId>earth-core</artifactId>
     <version>1.0.0-RELEASE</version>
     <packaging>jar</packaging>
