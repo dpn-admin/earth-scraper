@@ -1,7 +1,15 @@
 package org.chronopolis.earth.scheduled;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+import okhttp3.MediaType;
+import okhttp3.ResponseBody;
 import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
@@ -26,15 +34,18 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import retrofit2.Call;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 
 /**
  * TODO: Make sure we only sync items which the remote node is the admin node of
  * TODO: DateTime -> LocalDate
- * Disabled temporarily
- *
- *
+ * <p>
+ * <p>
  * Created by shake on 3/31/15.
  */
 @Component
@@ -42,7 +53,7 @@ import java.util.Map;
 @EnableScheduling
 public class Synchronizer {
 
-    private final Logger log = LoggerFactory.getLogger(Synchronizer.class);
+    private static final Logger log = LoggerFactory.getLogger(Synchronizer.class);
 
     @Autowired
     DateTimeFormatter formatter;
@@ -60,18 +71,20 @@ public class Synchronizer {
     LocalAPI local;
 
     LastSync lastSync;
+    ListeningExecutorService service;
 
-    // keep this disabled for the time being
-    @Scheduled(cron="${cron.sync:0 0 0 * * *}")
+    @Scheduled(cron = "${earth.cron.sync:0 0 0 * * *}")
     public void synchronize() {
+        service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
         readLastSync();
         syncNode();
-        LastSync sync = syncBags();
+        syncBags();
         syncTransfers();
-        writeLastSync(sync);
+        writeLastSync(lastSync);
+        service.shutdown();
     }
 
-    private void readLastSync() {
+    void readLastSync() {
         try {
             lastSync = LastSync.read();
         } catch (IOException e) {
@@ -80,7 +93,7 @@ public class Synchronizer {
         }
     }
 
-    private void writeLastSync(LastSync sync) {
+    void writeLastSync(LastSync sync) {
         try {
             sync.write();
         } catch (IOException e) {
@@ -88,27 +101,29 @@ public class Synchronizer {
         }
     }
 
-    private void syncTransfers() {
+    void syncTransfers() {
         BalustradeTransfers transfers = local.getTransfersAPI();
 
-        for (String node: transferAPIs.getApiMap().keySet()) {
-            String after = lastSync.getLastSync(node);
+        for (String node : transferAPIs.getApiMap().keySet()) {
+            DateTime now = DateTime.now();
+            String after = lastSync.lastReplicationSync(node);
             BalustradeTransfers api = transferAPIs.getApiMap().get(node);
             SimpleCallback<Response<Replication>> cb = new SimpleCallback<>();
             Call<Response<Replication>> call = api.getReplications(ImmutableMap.of(
-                    "admin_node", node,
+                    "from_node", node,
                     "after", after));
-                    // "after", formatter.print(after)));
 
-            call.enqueue(cb);
+            CompletableFuture<retrofit2.Response<Response<Replication>>> future = CompletableFuture.supplyAsync(() -> http(call), service);
+            CompletableFuture<Boolean> complete = future.thenApply(response -> {
+                boolean success = response.isSuccess();
+                List<Replication> replications = ImmutableList.of();
+                if (success) {
+                    replications = response.body().getResults();
+                } else {
 
-            Optional<Response<Replication>> response = cb.getResponse();
-            if (response.isPresent()) {
-                Response<Replication> replications = response.get();
-                log.info("[{}]: {} Replications to sync", node, replications.getCount());
-
-                // update each replication
-                for (Replication replication : replications.getResults()) {
+                }
+                log.info("[{}]: {} Replications to sync", node, replications.size());
+                for (Replication replication : replications) {
                     SimpleCallback<Replication> rcb = new SimpleCallback<>();
                     log.trace("[{}]: Updating replication {}", node, replication.getReplicationId());
 
@@ -125,44 +140,72 @@ public class Synchronizer {
                     }
 
                     try {
-                        syncCall.execute();
+                        retrofit2.Response<Replication> syncResponse = syncCall.execute();
+                        if (syncResponse.isSuccess()) {
+                            log.info("[{}]: Successfully updated replication {}", node, replication.getReplicationId());
+                        } else {
+                            success = false;
+                        }
+
                     } catch (IOException e) {
+                        success = false;
                         log.error("Error in call", e);
                     }
                 }
-            }
+                return success;
+            });
 
-            // TODO: Sync restore requests
-            // api.getRestores(new HashMap());
+            complete.handle((ok, th) -> {
+                if (ok != null && ok) {
+                    lastSync.addLastReplication(node, now);
+                }
+                return true;
+            });
         }
     }
 
-    private LastSync syncBags() {
+    static <T> retrofit2.Response<Response<T>> http(Call<Response<T>> call) {
+        // List<T> results = ImmutableList.of();
+        retrofit2.Response<Response<T>> response;
+        try {
+            response = call.execute();
+        } catch (IOException e) {
+            log.error("", e);
+            response = retrofit2.Response.error(503, ResponseBody.create(MediaType.parse("text/plain"), "Server is not available"));
+        }
+
+        return response;
+    }
+
+    void syncBags() {
         // Temporary placeholder for when we sync
         // we'll want a better way to do this
         LastSync newSyncs = new LastSync();
         BalustradeBag bagAPI = local.getBagAPI();
         Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
         for (String node : apis.keySet()) {
-            boolean update = true;
-            String after = lastSync.getLastSync(node);
-
-            SimpleCallback<Response<Bag>> cb = new SimpleCallback<>();
+            boolean update = false;
+            DateTime now = DateTime.now();
+            String after = lastSync.lastBagSync(node);
             BalustradeBag api = apis.get(node);
             Call<Response<Bag>> call = api.getBags(ImmutableMap.of(
                     "admin_node", node,
                     "after", after));
-                    // "after", formatter.print(after)));
 
-            call.enqueue(cb);
+            CompletableFuture<retrofit2.Response<Response<Bag>>> future =
+                    CompletableFuture.supplyAsync(() -> http(call), service);
 
-            Optional<Response<Bag>> response = cb.getResponse();
-            if (response.isPresent()) {
-                Response<Bag> bags = response.get();
-                log.info("[{}]: {} Bags to sync", node, bags.getCount());
+            CompletableFuture<Boolean> completed = future.thenApply(response -> {
+                boolean success = response.isSuccess();
+                List<Bag> bags = ImmutableList.of();
 
-                // Update each bag
-                for (Bag bag : bags.getResults()) {
+                if (success) {
+                    bags = response.body().getResults();
+                }
+
+                log.info("[{}]: {} Bags to sync", node, bags.size());
+                // TODO: Would be nice to have these execute async and reduce them to a single value
+                for (Bag bag : bags) {
                     log.trace("[{}]: Updating bag {}", node, bag.getUuid());
                     SimpleCallback<Bag> bagCB = new SimpleCallback<>();
 
@@ -178,47 +221,93 @@ public class Synchronizer {
                     }
 
                     try {
-                        sync.execute();
+                        retrofit2.Response<Bag> syncResponse = sync.execute();
+                        if (syncResponse.isSuccess()) {
+                            log.info("[{}]: Updated bag {} successfully", node, bag.getUuid());
+                        } else {
+                            log.warn("[{}]: Unable to update bag {}", node, bag.getUuid());
+                            success = false;
+                        }
                     } catch (IOException e) {
-                        update = false;
                         log.error("Error in call", e);
+                        success = false;
                     }
                 }
-            } else {
-                update = false;
-            }
 
-            if (update) {
-                newSyncs.addLastSync(node, DateTime.now());
-            } else {
-                newSyncs.addLastSync(node, lastSync.getLastSync(node));
-            }
+                return success;
+            });
 
+            // We don't really need this but it makes it easier to handle the exception
+            completed.handle((ok, throwable) -> {
+                if (ok != null && ok) {
+                    lastSync.addLastBagSync(node, now);
+                }
+                return true;
+            });
         }
-
-        return newSyncs;
     }
 
     /**
      * Update a nodes current information based on its own record
-     *
      */
-    private void syncNode() {
+    void syncNode() {
         Map<String, BalustradeNode> apis = nodeAPIs.getApiMap();
         for (String node : apis.keySet()) {
             SimpleCallback<Node> cb = new SimpleCallback<>();
             BalustradeNode api = apis.get(node);
+            DateTime now = DateTime.now();
+
+            /*
             Call<Node> call = api.getNode(node);
             call.enqueue(cb);
             Optional<Node> response = cb.getResponse();
-
             if (response.isPresent()) {
                 Node n = response.get();
                 log.trace("[{}]: Updating Node", node);
             }
+            */
+
+            ListenableFuture<Node> submit = service.submit(() -> {
+                Call<Node> call = api.getNode(node);
+                retrofit2.Response<Node> response = call.execute();
+                if (response.isSuccess()) {
+                    return response.body();
+                }
+
+                throw new Exception(response.errorBody().string());
+            });
+
+            Futures.addCallback(submit, new FutureCallback<Node>() {
+                @Override
+                public void onSuccess(@Nullable Node node) {
+                    if (node != null) {
+                        lastSync.addLastNode(node.getNamespace(), now);
+                    }
+                }
+
+                @Override
+                public void onFailure(Throwable throwable) {
+                    log.error("Error syncing node", throwable);
+                }
+            });
+
 
         }
+    }
 
+    // TODO: Might be able to do something like this to recognize
+    // when calls have failed in the completable futures
+    private class HeldException<T> {
+        T t;
+        Throwable throwable;
+
+        public HeldException(T t) {
+            this.t = t;
+        }
+
+        public boolean isSuccess() {
+            return throwable == null;
+        }
     }
 
 }

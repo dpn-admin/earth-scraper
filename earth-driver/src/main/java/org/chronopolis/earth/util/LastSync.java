@@ -22,8 +22,9 @@ import java.util.Map;
  */
 public class LastSync {
 
-    private Map<String, String> syncs;
+    private Map<String, NodeSync> syncs;
 
+    private static transient final String epoch = "1970-01-01T00:00:00Z";
     private static transient final String file = "last-syncs";
     private static transient final Path dir = Paths.get(System.getProperty("java.io.tmpdir"), "sync");;
     private final DateTimeFormatter formatter = ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
@@ -32,17 +33,38 @@ public class LastSync {
         syncs = new HashMap<>();
     }
 
-    public void addLastSync(String node, DateTime date) {
-        syncs.put(node, formatter.print(date));
+    // Getters and setters for our types of syncs
+    public void addLastBagSync(String node, DateTime date) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        sync.bag = formatter.print(date);
+        syncs.put(node, sync);
     }
 
-    public void addLastSync(String node, String date) {
-        syncs.put(node, date);
+    public void addLastReplication(String node, DateTime date) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        sync.replication = formatter.print(date);
+        syncs.put(node, sync);
     }
 
+    public void addLastNode(String node, DateTime date) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        sync.node = formatter.print(date);
+        syncs.put(node, sync);
+    }
 
-    public String getLastSync(String node) {
-        return syncs.getOrDefault(node, formatter.print(new DateTime(0)));
+    public String lastBagSync(String node) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        return sync.bag;
+    }
+
+    public String lastReplicationSync(String node) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        return sync.replication;
+    }
+
+    public String lastNodeSync(String node) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        return sync.node;
     }
 
     public void write() throws IOException {
@@ -80,6 +102,50 @@ public class LastSync {
         }
 
         return sync;
+    }
+
+
+    protected class NodeSync {
+        String bag = epoch;
+        String node = epoch;
+        String replication = epoch;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            NodeSync nodeSync = (NodeSync) o;
+
+            if (bag != null ? !bag.equals(nodeSync.bag) : nodeSync.bag != null) return false;
+            if (replication != null ? !replication.equals(nodeSync.replication) : nodeSync.replication != null)
+                return false;
+            return node != null ? node.equals(nodeSync.node) : nodeSync.node == null;
+
+        }
+
+        @Override
+        public int hashCode() {
+            int result = bag != null ? bag.hashCode() : 0;
+            result = 31 * result + (replication != null ? replication.hashCode() : 0);
+            result = 31 * result + (node != null ? node.hashCode() : 0);
+            return result;
+        }
+
+        // Getters for gson
+
+        public String getBag() {
+            return bag;
+        }
+
+        public String getReplication() {
+            return replication;
+        }
+
+        public String getNode() {
+            return node;
+        }
+
     }
 
 }
