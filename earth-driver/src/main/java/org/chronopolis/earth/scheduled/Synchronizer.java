@@ -180,11 +180,9 @@ public class Synchronizer {
     void syncBags() {
         // Temporary placeholder for when we sync
         // we'll want a better way to do this
-        LastSync newSyncs = new LastSync();
         BalustradeBag bagAPI = local.getBagAPI();
         Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
         for (String node : apis.keySet()) {
-            boolean update = false;
             DateTime now = DateTime.now();
             String after = lastSync.lastBagSync(node);
             BalustradeBag api = apis.get(node);
@@ -253,11 +251,11 @@ public class Synchronizer {
     void syncNode() {
         Map<String, BalustradeNode> apis = nodeAPIs.getApiMap();
         for (String node : apis.keySet()) {
-            SimpleCallback<Node> cb = new SimpleCallback<>();
             BalustradeNode api = apis.get(node);
             DateTime now = DateTime.now();
 
             /*
+            SimpleCallback<Node> cb = new SimpleCallback<>();
             Call<Node> call = api.getNode(node);
             call.enqueue(cb);
             Optional<Node> response = cb.getResponse();
