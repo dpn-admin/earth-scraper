@@ -119,9 +119,8 @@ public class Synchronizer {
                 List<Replication> replications = ImmutableList.of();
                 if (success) {
                     replications = response.body().getResults();
-                } else {
-
                 }
+
                 log.info("[{}]: {} Replications to sync", node, replications.size());
                 for (Replication replication : replications) {
                     SimpleCallback<Replication> rcb = new SimpleCallback<>();
@@ -144,6 +143,7 @@ public class Synchronizer {
                         if (syncResponse.isSuccess()) {
                             log.info("[{}]: Successfully updated replication {}", node, replication.getReplicationId());
                         } else {
+                            log.warn("[{}]: Unable to update replication {}", node, replication.getReplicationId(), syncResponse.errorBody().string());
                             success = false;
                         }
 
@@ -223,7 +223,7 @@ public class Synchronizer {
                         if (syncResponse.isSuccess()) {
                             log.info("[{}]: Updated bag {} successfully", node, bag.getUuid());
                         } else {
-                            log.warn("[{}]: Unable to update bag {}", node, bag.getUuid());
+                            log.warn("[{}]: Unable to update bag {}", node, bag.getUuid(), syncResponse.errorBody().string());
                             success = false;
                         }
                     } catch (IOException e) {
