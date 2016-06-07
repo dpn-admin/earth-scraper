@@ -19,7 +19,7 @@ import org.chronopolis.earth.config.Ingest;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.rest.api.IngestAPI;
-import org.chronopolis.rest.models.Bag;
+import org.chronopolis.rest.entities.Bag;
 import org.chronopolis.rest.models.BagStatus;
 import org.chronopolis.rest.models.IngestRequest;
 import org.joda.time.DateTime;
@@ -493,7 +493,7 @@ public class Downloader {
             return;
         }
 
-        // Set the receipt
+        // Set the receipt or mark as invalid if no receipt could be made
         String receipt = hash != null ? hash.toString() : "invalid-bag";
         transfer.setFixityValue(receipt);
 
