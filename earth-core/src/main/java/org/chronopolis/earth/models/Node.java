@@ -145,6 +145,14 @@ public class Node {
         return this;
     }
 
+    public Node setStorage(String region, String type) {
+        this.storage = new Storage(region, type);
+        return this;
+    }
+
+    public Storage newStorage(String region, String type) {
+        return new Storage(region, type);
+    }
 
     // Storage class to encapsulate the object
 
