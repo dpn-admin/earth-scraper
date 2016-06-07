@@ -3,7 +3,10 @@ package org.chronopolis.earth;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okio.Buffer;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
@@ -20,6 +23,10 @@ import org.chronopolis.earth.serializers.DateTimeSerializer;
 import org.chronopolis.earth.serializers.ReplicationStatusDeserializer;
 import org.chronopolis.earth.serializers.ReplicationStatusSerializer;
 import org.chronopolis.rest.api.IngestAPI;
+import org.chronopolis.rest.entities.Bag;
+import org.chronopolis.rest.support.PageDeserializer;
+import org.chronopolis.rest.support.ZonedDateTimeDeserializer;
+import org.chronopolis.rest.support.ZonedDateTimeSerializer;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
@@ -28,9 +35,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.PageImpl;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
 
+import java.lang.reflect.Type;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -94,21 +104,20 @@ public class EarthConfiguration {
             log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
 
             OkHttpClient client = new OkHttpClient.Builder()
-                    /*
-                    .addInterceptor(new Interceptor() {
-                        @Override
-                        public Response intercept(Chain chain) throws IOException {
-                            Request req = chain.request();
-                            log.debug("[{}] {}", req.method(), req.url());
+                    .addInterceptor(chain -> {
+                        Request req = chain.request();
+                        log.debug("[{}] {}", req.method(), req.url());
 
-                            if (Objects.equals(req.method(), "PUT")) {
-                                Buffer b = new Buffer();
-                                req.body().writeTo(b);
-                                log.debug("{}", b.readUtf8());
-                            }
-                            return chain.proceed(req);
+                        if (req.body() != null) {
+                            Buffer b = new Buffer();
+                            req.body().writeTo(b);
+                            log.debug("{}", b.readUtf8());
+                        } else {
+                            log.trace("Skipping trace of http call");
                         }
-                    })*/
+
+                        return chain.proceed(req);
+                    })
                 .addInterceptor(new OkTokenInterceptor(endpoint.getAuthKey()))
                 .build();
 
@@ -137,21 +146,16 @@ public class EarthConfiguration {
         log.debug("Creating local adapter for root {}", local.getApiRoot());
 
         OkHttpClient client = new OkHttpClient.Builder()
-                /*
-            .addInterceptor(new Interceptor() {
-                        @Override
-                        public Response intercept(Chain chain) throws IOException {
-                            Request req = chain.request();
-                            log.debug("[{}] {}", req.method(), req.url());
-                            if (Objects.equals(req.method(), "PUT")
-                                    || Objects.equals(req.method(), "POST")) {
-                                Buffer b = new Buffer();
-                                req.body().writeTo(b);
-                                log.debug("{}", b.readUtf8());
-                            }
-                            return chain.proceed(req);
-                        }
-            })*/
+            .addInterceptor(chain -> {
+                Request req = chain.request();
+                log.debug("[{}] {}", req.method(), req.url());
+                if (req.body() != null) {
+                    Buffer b = new Buffer();
+                    req.body().writeTo(b);
+                    log.debug("{}", b.readUtf8());
+                }
+                return chain.proceed(req);
+            })
             .addInterceptor(new OkTokenInterceptor(local.getAuthKey()))
             .build();
 
@@ -171,6 +175,16 @@ public class EarthConfiguration {
     @Bean
     IngestAPI ingestAPI() {
         Ingest api = settings.getIngest();
+
+        Type bagPage = new TypeToken<PageImpl<Bag>>() {}.getType();
+        Type bagList = new TypeToken<List<Bag>>() {}.getType();
+
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(bagPage, new PageDeserializer(bagList))
+                .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer())
+                .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeDeserializer())
+                .create();
+
         OkHttpClient client = new OkHttpClient.Builder()
                 .readTimeout(5, TimeUnit.HOURS)
                 .addInterceptor(new OkBasicInterceptor(
@@ -183,7 +197,7 @@ public class EarthConfiguration {
         Retrofit adapter = new Retrofit.Builder()
                 .baseUrl(api.getEndpoint())
                 .client(client)
-                .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create(gson))
                 // .setLogLevel(RestAdapter.LogLevel.FULL)
                 .build();
 
