@@ -240,7 +240,7 @@ public class Downloader {
                     if (!bags.isEmpty()) {
                         Bag b = bags.get(0);
                         log.info("Bag found in chronopolis, status is {}", b.getStatus());
-                        if (b.getStatus() == BagStatus.REPLICATED) {
+                        if (b.getStatus() == BagStatus.PRESERVED) {
                             store(api, transfer);
                         }
                     } else {
@@ -287,6 +287,7 @@ public class Downloader {
             request.setDepositor(transfer.getFromNode());
             request.setName(transfer.getUuid());
             request.setLocation(transfer.getFromNode() + "/" + transfer.getUuid());
+            request.setRequiredReplications(1);
             request.setReplicatingNodes(ImmutableList.of(ingest.getNode()));
 
             // We don't really need to check the result of this unless it fails,
