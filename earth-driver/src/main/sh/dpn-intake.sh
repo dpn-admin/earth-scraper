@@ -1,17 +1,17 @@
 #!/bin/sh
 
 ### BEGIN INIT INFO
-# Provides:      dpn-replication
+# Provides:      dpn-intake
 # Default-Start: 3 5
 # Default-Stop:  0 1 2 6
-# Description:   Start the DPN-Chronopolis replication service
+# Description:   Start the DPN-Chronopolis intake service
 ### END INIT INFO
 
 # User to execute as
 CHRON_USER="chronopolis"
 
-REPL_JAR="/usr/lib/dpn/dpn-replication.jar"
-REPL_PID_FILE="/var/run/dpn-replication.pid"
+REPL_JAR="/usr/lib/dpn/dpn-intake.jar"
+REPL_PID_FILE="/var/run/dpn-intake.pid"
 
 # Set the location which holds our application.properties
 # SPRING_CONFIG_NAME="application.yml"
@@ -32,7 +32,7 @@ COUNTDOWN=1
 
 case "$1" in
     start)
-    echo "Starting the dpn replication service"
+    echo "Starting the dpn intake service"
     daemon --user "$CHRON_USER" --pidfile "$REPL_PID_FILE" $ENV $JAVA_CMD $PARAMS > /dev/null 2>&1
     RETVAL=$?
 
@@ -57,7 +57,7 @@ case "$1" in
             [ $? -eq 0 ] || continue
             echo $pid > $REPL_PID_FILE
             let RUNNING=0
-            echo $RUNNING
+            # echo $RUNNING
         done < check_pipe
     fi
 
@@ -70,15 +70,15 @@ case "$1" in
     RETVAL=$RUNNING
     ;;
     stop)
-    echo "Stopping the dpn replication service"
-    killproc dpn-replication
+    echo "Stopping the dpn intake service"
+    killproc dpn-intake
     ;;
     restart)
     $0 stop
     $0 start
     ;;
     status)
-        status dpn-replication
+        status dpn-intake
         RETVAL=$?
     ;;
 esac

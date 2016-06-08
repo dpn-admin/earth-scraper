@@ -3,13 +3,13 @@
 # For use below
 %define _prefix %{_usr}/lib/dpn
 %define _confdir /etc/dpn
-%define service dpn-replication
+%define service dpn-intake
 
-Name: dpn-replication
+Name: dpn-intake
 Version: %{ver}
 Release: %{rel}%{?dist}
-Source: dpn-replication.jar
-Source1: dpn-replication.sh
+Source: dpn-intake.jar
+Source1: dpn-intake.sh
 Source2: application.yml
 Summary: Chronopolis Replication Service
 License: UMD
@@ -22,7 +22,7 @@ BuildArch: noarch
 BuildRoot: ${_tmppath}/build-%{name}-%{version}
 
 %description
-The DPN Replication Service queries DPN nodes for replications to pull into
+The DPN Intake Service queries DPN nodes for replications to pull into
 Chronopolis, and notifies the Chronopolis Ingest Service upon completion. It
 also takes care of other tasks, such as synchronization and cleaning of the 
 staging area.
@@ -41,7 +41,7 @@ rm -rf "%{buildroot}"
 
 %files
 
-%defattr(-,root,root)
+%defattr(-,chronopolis,chronopolis)
 # conf
 %dir %{_confdir}
 %config %attr(0644,-,-) %{_confdir}/application.yml
