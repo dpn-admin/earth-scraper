@@ -94,7 +94,7 @@ public class Downloader {
      */
     private Response<Replication> emptyResponse() {
         Response<Replication> response = new Response<>();
-        response.setResults(Lists.<Replication>newArrayList());
+        response.setResults(Lists.newArrayList());
         return response;
     }
 
@@ -117,6 +117,7 @@ public class Downloader {
             BalustradeTransfers api = entry.getValue();
             log.info("[{}] Getting {} replications", node, status.getName());
             do {
+                params.put("from_node", node);
                 params.put("page", String.valueOf(page));
                 transfers = getTransfers(api, params);
                 for (Replication transfer : transfers.getResults()) {
@@ -154,6 +155,7 @@ public class Downloader {
             BalustradeTransfers api = entry.getValue();
             log.info("[{}] Getting {} replications", node, status.getName());
             do {
+                params.put("from_node", node);
                 params.put("page", String.valueOf(page));
                 transfers = getTransfers(api, params);
                 for (Replication transfer : transfers.getResults()) {
@@ -208,6 +210,7 @@ public class Downloader {
             log.info("[{}] Getting {} replications", node, status.getName());
 
             do {
+                params.put("from_node", node);
                 params.put("page", String.valueOf(page));
                 transfers = getTransfers(api, params);
                 for (Replication transfer : transfers.getResults()) {
