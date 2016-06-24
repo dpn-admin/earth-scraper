@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Configuration for our beans. Mostly just creation of the rest adapters to
  * access the various apis.
- *
+ * <p>
  * Created by shake on 4/27/15.
  */
 @Configuration
@@ -65,7 +65,7 @@ public class EarthConfiguration {
     }
 
     @Bean
-    TransferAPIs transferAPIs () {
+    TransferAPIs transferAPIs() {
         return new TransferAPIs();
     }
 
@@ -93,9 +93,9 @@ public class EarthConfiguration {
 
     @Bean
     List<Retrofit> adapters(TransferAPIs transferAPIs,
-                               NodeAPIs nodeAPIs,
-                               BagAPIs bagAPIs,
-                               Gson gson) {
+                            NodeAPIs nodeAPIs,
+                            BagAPIs bagAPIs,
+                            Gson gson) {
         List<Retrofit> adapters = new ArrayList<>();
         Dpn dpn = settings.getDpn();
 
@@ -106,20 +106,22 @@ public class EarthConfiguration {
             OkHttpClient client = new OkHttpClient.Builder()
                     .addInterceptor(chain -> {
                         Request req = chain.request();
-                        log.debug("[{}] {}", req.method(), req.url());
 
-                        if (req.body() != null) {
-                            Buffer b = new Buffer();
-                            req.body().writeTo(b);
-                            log.debug("{}", b.readUtf8());
-                        } else {
-                            log.trace("Skipping trace of http call");
+                        if (settings.logRemote()) {
+                            log.debug("[{}] {}", req.method(), req.url());
+                            if (req.body() != null) {
+                                Buffer b = new Buffer();
+                                req.body().writeTo(b);
+                                log.debug("{}", b.readUtf8());
+                            } else {
+                                log.trace("Skipping trace of http call");
+                            }
                         }
 
                         return chain.proceed(req);
                     })
-                .addInterceptor(new OkTokenInterceptor(endpoint.getAuthKey()))
-                .build();
+                    .addInterceptor(new OkTokenInterceptor(endpoint.getAuthKey()))
+                    .build();
 
             Retrofit adapter = new Retrofit.Builder()
                     .baseUrl(endpoint.getApiRoot())
@@ -146,18 +148,22 @@ public class EarthConfiguration {
         log.debug("Creating local adapter for root {}", local.getApiRoot());
 
         OkHttpClient client = new OkHttpClient.Builder()
-            .addInterceptor(chain -> {
-                Request req = chain.request();
-                log.debug("[{}] {}", req.method(), req.url());
-                if (req.body() != null) {
-                    Buffer b = new Buffer();
-                    req.body().writeTo(b);
-                    log.debug("{}", b.readUtf8());
-                }
-                return chain.proceed(req);
-            })
-            .addInterceptor(new OkTokenInterceptor(local.getAuthKey()))
-            .build();
+                .addInterceptor(chain -> {
+                    Request req = chain.request();
+
+                    if (settings.logLocal()) {
+                        log.debug("[{}] {}", req.method(), req.url());
+                        if (req.body() != null) {
+                            Buffer b = new Buffer();
+                            req.body().writeTo(b);
+                            log.debug("{}", b.readUtf8());
+                        }
+                    }
+
+                    return chain.proceed(req);
+                })
+                .addInterceptor(new OkTokenInterceptor(local.getAuthKey()))
+                .build();
 
         Retrofit adapter = new Retrofit.Builder()
                 .baseUrl(local.getApiRoot())
@@ -176,8 +182,10 @@ public class EarthConfiguration {
     IngestAPI ingestAPI() {
         Ingest api = settings.getIngest();
 
-        Type bagPage = new TypeToken<PageImpl<Bag>>() {}.getType();
-        Type bagList = new TypeToken<List<Bag>>() {}.getType();
+        Type bagPage = new TypeToken<PageImpl<Bag>>() {
+        }.getType();
+        Type bagList = new TypeToken<List<Bag>>() {
+        }.getType();
 
         Gson gson = new GsonBuilder()
                 .registerTypeAdapter(bagPage, new PageDeserializer(bagList))
@@ -187,6 +195,20 @@ public class EarthConfiguration {
 
         OkHttpClient client = new OkHttpClient.Builder()
                 .readTimeout(5, TimeUnit.HOURS)
+                .addInterceptor(chain -> {
+                    Request req = chain.request();
+
+                    if (settings.logChron()) {
+                        log.debug("[{}] {}", req.method(), req.url());
+                        if (req.body() != null) {
+                            Buffer b = new Buffer();
+                            req.body().writeTo(b);
+                            log.debug("{}", b.readUtf8());
+                        }
+                    }
+
+                    return chain.proceed(req);
+                })
                 .addInterceptor(new OkBasicInterceptor(
                         api.getUsername(),
                         api.getPassword()))

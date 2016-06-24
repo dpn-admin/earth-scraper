@@ -14,11 +14,14 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "earth")
 public class EarthSettings {
 
-    Boolean disableSNI;
-    String stage;
-    String name;
-    Ingest ingest;
-    Dpn dpn;
+    private Boolean disableSNI;
+    private Boolean logLocal;
+    private Boolean logRemote;
+    private Boolean logChron;
+    private String stage;
+    private String name;
+    private Ingest ingest;
+    private Dpn dpn;
 
     public String getStage() {
         return stage;
@@ -62,6 +65,33 @@ public class EarthSettings {
 
     public EarthSettings setName(String name) {
         this.name = name;
+        return this;
+    }
+
+    public Boolean logLocal() {
+        return logLocal;
+    }
+
+    public EarthSettings setLogLocal(Boolean logLocal) {
+        this.logLocal = logLocal;
+        return this;
+    }
+
+    public Boolean logRemote() {
+        return logRemote;
+    }
+
+    public EarthSettings setLogRemote(Boolean logRemote) {
+        this.logRemote = logRemote;
+        return this;
+    }
+
+    public Boolean logChron() {
+        return logChron;
+    }
+
+    public EarthSettings setLogChron(Boolean logChron) {
+        this.logChron = logChron;
         return this;
     }
 }
