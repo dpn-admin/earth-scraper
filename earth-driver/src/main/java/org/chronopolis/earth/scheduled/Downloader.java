@@ -1,6 +1,5 @@
 package org.chronopolis.earth.scheduled;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -46,6 +45,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * TODO: Find a better way to query each api/grab replication transfers
@@ -70,6 +70,14 @@ public class Downloader {
     @Autowired
     EarthSettings settings;
 
+    /*
+    public Downloader(EarthSettings settings, IngestAPI chronopolis, TransferAPIs apis) {
+        this.apis = apis;
+        this.chronopolis = chronopolis;
+        this.settings = settings;
+    }
+    */
+
     private Response<Replication> getTransfers(BalustradeTransfers balustrade,
                                                Map<String, String> params) {
         SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
@@ -79,7 +87,7 @@ public class Downloader {
         Optional<Response<Replication>> response = callback.getResponse();
 
         // get the actual response OR an empty response (in the event of failure)
-        Response<Replication> transfers = response.or(emptyResponse());
+        Response<Replication> transfers = response.orElse(emptyResponse());
         log.trace("Count: {}\nNext: {}\nPrevious: {}",
                 transfers.getCount(),
                 transfers.getNext(),
@@ -265,7 +273,7 @@ public class Downloader {
      * @param api The transfer API to use
      * @param transfer The replication transfer to update
      */
-    private void store(BalustradeTransfers api, Replication transfer) {
+    public void store(BalustradeTransfers api, Replication transfer) {
         SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setStatus(Replication.Status.STORED);
         transfer.setUpdatedAt(new DateTime());
@@ -280,7 +288,7 @@ public class Downloader {
      *
      * @param transfer The replication transfer being ingested into Chronopolis
      */
-    private void push(Replication transfer) {
+    public void push(Replication transfer) {
         if (transfer.isFixityAccept() && transfer.isBagValid()) {
             log.info("Bag is valid, pushing to chronopolis");
             Ingest ingest = settings.getIngest();
@@ -311,7 +319,7 @@ public class Downloader {
      * @param api      dpn api to update the replication request
      * @param transfer the replication request from the dpn api
      */
-    private void validate(BalustradeTransfers api, Replication transfer) {
+    public void validate(BalustradeTransfers api, Replication transfer) {
         if (!transfer.isFixityAccept()) {
             log.info("Fixity not accepted, setting bag as false");
             transfer.setBagValid(false);
@@ -396,7 +404,7 @@ public class Downloader {
      * @param transfer The replication transfer to download
      * @throws InterruptedException
      */
-    private void download(BalustradeTransfers api, Replication transfer) throws InterruptedException, IOException {
+    public void download(BalustradeTransfers api, Replication transfer) throws InterruptedException, IOException {
         String stage = settings.getStage();
         String uuid = transfer.getUuid();
         String from = transfer.getFromNode();
@@ -468,7 +476,7 @@ public class Downloader {
      *
      * @param transfer The replication transfer to update
      */
-    private void update(BalustradeTransfers balustrade, Replication transfer) {
+    public void update(BalustradeTransfers balustrade, Replication transfer) {
         // Get the files digest
         HashFunction func = Hashing.sha256();
         String stage = settings.getStage();
@@ -520,7 +528,7 @@ public class Downloader {
      * @param transfer The replication transfer to untar
      */
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    private void untar(Replication transfer) throws IOException {
+    public void untar(Replication transfer) throws IOException {
         String stage = settings.getStage();
         Path tarball = Paths.get(stage, transfer.getFromNode(), transfer.getUuid() + ".tar");
 

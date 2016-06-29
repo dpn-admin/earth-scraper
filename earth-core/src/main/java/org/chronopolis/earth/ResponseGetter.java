@@ -1,6 +1,6 @@
 package org.chronopolis.earth;
 
-import com.google.common.base.Optional;
+import java.util.Optional;
 
 /**
  * Interface to allow our callback to have a predefined getter

@@ -1,12 +1,12 @@
 package org.chronopolis.earth;
 
-import com.google.common.base.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -43,7 +43,7 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
             }
 
             log.warn("HTTP call was not successful {}", response.code(), errorBody);
-            this.response = Optional.absent();
+            this.response = Optional.empty();
         }
 
         latch.countDown();
@@ -52,7 +52,7 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
     @Override
     public void onFailure(Throwable throwable) {
         log.error("Error in HTTP Call: ", throwable);
-        this.response = Optional.absent();
+        this.response = Optional.empty();
         latch.countDown();
     }
 
