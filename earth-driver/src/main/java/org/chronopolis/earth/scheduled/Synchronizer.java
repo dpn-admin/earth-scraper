@@ -38,7 +38,6 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
 /**
@@ -80,8 +79,8 @@ public class Synchronizer {
         syncNode();
         syncBags();
         syncTransfers();
+        service.shutdown(); // shutdown the pool
         writeLastSync(lastSync);
-        service.shutdown();
     }
 
     void readLastSync() {
@@ -93,8 +92,9 @@ public class Synchronizer {
         }
     }
 
-    void writeLastSync(LastSync sync) {
+    private void writeLastSync(LastSync sync) {
         try {
+            log.info("Writing last sync");
             sync.write();
         } catch (IOException e) {
             log.error("Unable to write last sync!", e);
@@ -108,64 +108,58 @@ public class Synchronizer {
             DateTime now = DateTime.now();
             String after = lastSync.lastReplicationSync(node);
             BalustradeTransfers api = transferAPIs.getApiMap().get(node);
-            SimpleCallback<Response<Replication>> cb = new SimpleCallback<>();
             Call<Response<Replication>> call = api.getReplications(ImmutableMap.of(
                     "from_node", node,
                     "after", after));
 
-            CompletableFuture<retrofit2.Response<Response<Replication>>> future = CompletableFuture.supplyAsync(() -> http(call), service);
-            CompletableFuture<Boolean> complete = future.thenApply(response -> {
-                boolean success = response.isSuccess();
-                List<Replication> replications = ImmutableList.of();
-                if (success) {
-                    replications = response.body().getResults();
+            retrofit2.Response<Response<Replication>> http = http(call);
+            boolean success = http.isSuccess();
+            List<Replication> replications = ImmutableList.of();
+            if (success) {
+                replications = http.body().getResults();
+            }
+
+            log.info("[{}]: {} Replications to sync", node, replications.size());
+            for (Replication replication : replications) {
+                SimpleCallback<Replication> rcb = new SimpleCallback<>();
+                log.trace("[{}]: Updating replication {}", node, replication.getReplicationId());
+
+                // First check if the replication exists
+                Call<Replication> syncCall;
+                Call<Replication> get = transfers.getReplication(replication.getReplicationId());
+                get.enqueue(rcb);
+                Optional<Replication> replResponse = rcb.getResponse();
+
+                if (replResponse.isPresent()) {
+                    syncCall = transfers.updateReplication(replication.getReplicationId(), replication);
+                } else {
+                    syncCall = transfers.createReplication(replication);
                 }
 
-                log.info("[{}]: {} Replications to sync", node, replications.size());
-                for (Replication replication : replications) {
-                    SimpleCallback<Replication> rcb = new SimpleCallback<>();
-                    log.trace("[{}]: Updating replication {}", node, replication.getReplicationId());
-
-                    // First check if the replication exists
-                    Call<Replication> syncCall;
-                    Call<Replication> get = transfers.getReplication(replication.getReplicationId());
-                    get.enqueue(rcb);
-                    Optional<Replication> replResponse = rcb.getResponse();
-
-                    if (replResponse.isPresent()) {
-                        syncCall = transfers.updateReplication(replication.getReplicationId(), replication);
+                try {
+                    retrofit2.Response<Replication> syncResponse = syncCall.execute();
+                    if (syncResponse.isSuccess()) {
+                        log.info("[{}]: Successfully updated replication {}", node, replication.getReplicationId());
                     } else {
-                        syncCall = transfers.createReplication(replication);
-                    }
-
-                    try {
-                        retrofit2.Response<Replication> syncResponse = syncCall.execute();
-                        if (syncResponse.isSuccess()) {
-                            log.info("[{}]: Successfully updated replication {}", node, replication.getReplicationId());
-                        } else {
-                            log.warn("[{}]: Unable to update replication {}", node, replication.getReplicationId(), syncResponse.errorBody().string());
-                            success = false;
-                        }
-
-                    } catch (IOException e) {
+                        log.warn("[{}]: Unable to update replication {}", node, replication.getReplicationId(), syncResponse.errorBody().string());
                         success = false;
-                        log.error("Error in call", e);
                     }
-                }
-                return success;
-            });
 
-            complete.handle((ok, th) -> {
-                if (ok != null && ok) {
-                    lastSync.addLastReplication(node, now);
+                } catch (IOException e) {
+                    success = false;
+                    log.error("Error in call", e);
                 }
-                return true;
-            });
+            }
+
+            if (success) {
+                log.info("Adding last sync to repl for node {}", node);
+                lastSync.addLastReplication(node, now);
+            }
         }
+
     }
 
     static <T> retrofit2.Response<Response<T>> http(Call<Response<T>> call) {
-        // List<T> results = ImmutableList.of();
         retrofit2.Response<Response<T>> response;
         try {
             response = call.execute();
@@ -178,8 +172,6 @@ public class Synchronizer {
     }
 
     void syncBags() {
-        // Temporary placeholder for when we sync
-        // we'll want a better way to do this
         BalustradeBag bagAPI = local.getBagAPI();
         Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
         for (String node : apis.keySet()) {
@@ -190,58 +182,48 @@ public class Synchronizer {
                     "admin_node", node,
                     "after", after));
 
-            CompletableFuture<retrofit2.Response<Response<Bag>>> future =
-                    CompletableFuture.supplyAsync(() -> http(call), service);
+            retrofit2.Response<Response<Bag>> http = http(call);
+            boolean success = http.isSuccess();
+            List<Bag> bags = ImmutableList.of();
 
-            CompletableFuture<Boolean> completed = future.thenApply(response -> {
-                boolean success = response.isSuccess();
-                List<Bag> bags = ImmutableList.of();
+            if (success) {
+                bags = http.body().getResults();
+            }
 
-                if (success) {
-                    bags = response.body().getResults();
+            log.info("[{}]: {} Bags to sync", node, bags.size());
+            for (Bag bag : bags) {
+                log.trace("[{}]: Updating bag {}", node, bag.getUuid());
+                SimpleCallback<Bag> bagCB = new SimpleCallback<>();
+
+                Call<Bag> sync;
+                Call<Bag> get = bagAPI.getBag(bag.getUuid());
+                get.enqueue(bagCB);
+                Optional<Bag> bagResponse = bagCB.getResponse();
+
+                if (bagResponse.isPresent()) {
+                    sync = bagAPI.updateBag(bag.getUuid(), bag);
+                } else {
+                    sync = bagAPI.createBag(bag);
                 }
 
-                log.info("[{}]: {} Bags to sync", node, bags.size());
-                // TODO: Would be nice to have these execute async and reduce them to a single value
-                for (Bag bag : bags) {
-                    log.trace("[{}]: Updating bag {}", node, bag.getUuid());
-                    SimpleCallback<Bag> bagCB = new SimpleCallback<>();
-
-                    Call<Bag> sync;
-                    Call<Bag> get = bagAPI.getBag(bag.getUuid());
-                    get.enqueue(bagCB);
-                    Optional<Bag> bagResponse = bagCB.getResponse();
-
-                    if (bagResponse.isPresent()) {
-                        sync = bagAPI.updateBag(bag.getUuid(), bag);
+                try {
+                    retrofit2.Response<Bag> syncResponse = sync.execute();
+                    if (syncResponse.isSuccess()) {
+                        log.info("[{}]: Updated bag {} successfully", node, bag.getUuid());
                     } else {
-                        sync = bagAPI.createBag(bag);
-                    }
-
-                    try {
-                        retrofit2.Response<Bag> syncResponse = sync.execute();
-                        if (syncResponse.isSuccess()) {
-                            log.info("[{}]: Updated bag {} successfully", node, bag.getUuid());
-                        } else {
-                            log.warn("[{}]: Unable to update bag {}", node, bag.getUuid(), syncResponse.errorBody().string());
-                            success = false;
-                        }
-                    } catch (IOException e) {
-                        log.error("Error in call", e);
+                        log.warn("[{}]: Unable to update bag {}", node, bag.getUuid(), syncResponse.errorBody().string());
                         success = false;
                     }
+                } catch (IOException e) {
+                    log.error("Error in call", e);
+                    success = false;
                 }
+            }
 
-                return success;
-            });
-
-            // We don't really need this but it makes it easier to handle the exception
-            completed.handle((ok, throwable) -> {
-                if (ok != null && ok) {
-                    lastSync.addLastBagSync(node, now);
-                }
-                return true;
-            });
+            if (success) {
+                log.info("Adding last sync to bags for node {}", node);
+                lastSync.addLastBagSync(node, now);
+            }
         }
     }
 
@@ -253,17 +235,6 @@ public class Synchronizer {
         for (String node : apis.keySet()) {
             BalustradeNode api = apis.get(node);
             DateTime now = DateTime.now();
-
-            /*
-            SimpleCallback<Node> cb = new SimpleCallback<>();
-            Call<Node> call = api.getNode(node);
-            call.enqueue(cb);
-            Optional<Node> response = cb.getResponse();
-            if (response.isPresent()) {
-                Node n = response.get();
-                log.trace("[{}]: Updating Node", node);
-            }
-            */
 
             ListenableFuture<Node> submit = service.submit(() -> {
                 Call<Node> call = api.getNode(node);
@@ -288,8 +259,6 @@ public class Synchronizer {
                     log.error("Error syncing node", throwable);
                 }
             });
-
-
         }
     }
 
