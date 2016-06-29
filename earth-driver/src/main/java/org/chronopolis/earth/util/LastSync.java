@@ -22,6 +22,8 @@ import java.util.Map;
  */
 public class LastSync {
 
+    // We might want to consider changing this to a List[NodeSync]
+    // where NodeSync also has a name field
     private Map<String, NodeSync> syncs;
 
     private static transient final String epoch = "1970-01-01T00:00:00Z";
@@ -96,7 +98,7 @@ public class LastSync {
             reader.close();
 
             Gson g = new Gson();
-            sync.syncs = g.fromJson(builder.toString(), new TypeToken<Map<String, String>>() {}.getType());
+            sync.syncs = g.fromJson(builder.toString(), new TypeToken<Map<String, NodeSync>>() {}.getType());
             // log.info("size: {}", sync.syncs.size());
             // sync.syncs.entrySet().forEach(e -> log.info("{} :: {}", e.getKey(), e.getValue()));
         }
