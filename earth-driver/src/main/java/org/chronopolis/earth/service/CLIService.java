@@ -1,6 +1,5 @@
 package org.chronopolis.earth.service;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BagAPIs;
@@ -13,6 +12,7 @@ import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.scheduled.Downloader;
 import org.chronopolis.earth.scheduled.Synchronizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Service for when we are run from the command line
@@ -78,7 +79,51 @@ public class CLIService implements DpnService {
             } else if (option.equals(OPTION.QUIT)) {
                 log.info("Quitting");
                 done = true;
+            } else if (option.equals(OPTION.REPLICATE)) {
+                doReplication();
             }
+        }
+    }
+
+    private void doReplication() {
+        Downloader dl;
+        Replication replication;
+        try {
+            dl = context.getBean(Downloader.class);
+        } catch (Exception e) {
+            System.out.println("Unable to create downloader");
+            return;
+        }
+
+        System.out.println("DPN Node: ");
+        String node = readLine();
+        System.out.println("Replication UUID: ");
+        String uuid = readLine();
+
+        BalustradeTransfers api = transferAPIs.getApiMap().get(node);
+        Call<Replication> replicationCall = api.getReplication(uuid);
+        try {
+            retrofit2.Response<Replication> response = replicationCall.execute();
+            replication = response.body();
+        } catch (IOException e) {
+            System.out.println("Unable to get replication from " + node + " with uuid " + uuid);
+            return;
+        }
+
+        try {
+            dl.download(api, replication);
+            System.out.println("Downloaded. Waiting on input to continue.");
+            readLine();
+            dl.update(api, replication);
+            System.out.println("Updated. Waiting on input to continue.");
+            readLine();
+            dl.untar(replication);
+            dl.validate(api, replication);
+            System.out.println("Validated. Waiting on input to continue.");
+            readLine();
+            dl.push(replication);
+        } catch (InterruptedException | IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -200,7 +245,7 @@ public class CLIService implements DpnService {
     }
 
     private enum OPTION {
-        BAG, TRANSFER, NODE, QUIT, SYNC, UNKNOWN;
+        BAG, TRANSFER, NODE, QUIT, SYNC, REPLICATE, UNKNOWN;
 
         private static OPTION fromString(String text) {
             switch (text) {
@@ -219,6 +264,9 @@ public class CLIService implements DpnService {
                 case "S":
                 case "s":
                     return SYNC;
+                case "R":
+                case "r":
+                    return REPLICATE;
                 default:
                     return UNKNOWN;
             }
