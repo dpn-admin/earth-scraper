@@ -11,6 +11,7 @@ import org.junit.Test;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,7 +26,8 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
     private Replication replication;
     private ImmutableMap<String, String> params = ImmutableMap.of(
             "from_node", node,
-            "after", epoch);
+            "after", epoch,
+            "page", String.valueOf(1));
 
     @Before
     public void setup() {
@@ -55,7 +57,7 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
     }
 
     private void verifyMocks(int remoteGet, int localGet, int localCreate, int localUpdate) {
-        verify(remoteTransfer, times(remoteGet)).getReplications(params);
+        verify(remoteTransfer, times(remoteGet)).getReplications(any());
         verify(localTransfer, times(localGet)).getReplication(replication.getReplicationId());
         verify(localTransfer, times(localCreate)).createReplication(replication);
         verify(localTransfer, times(localUpdate)).updateReplication(replication.getReplicationId(), replication);
