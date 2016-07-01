@@ -2,16 +2,19 @@ package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.util.concurrent.MoreExecutors;
 import org.chronopolis.earth.models.Bag;
+import org.chronopolis.earth.models.Response;
 import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import retrofit2.Call;
 
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Executors;
+import java.util.function.Function;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,7 +29,8 @@ public class SynchronizeBagTest extends SynchronizerTest {
     private Bag bag;
     private ImmutableMap<String, String> params = ImmutableMap.of(
                 "admin_node", node,
-                "after", epoch);
+                "after", epoch,
+                "page", "1");
 
     @Before
     public void setup() {
@@ -58,10 +62,45 @@ public class SynchronizeBagTest extends SynchronizerTest {
     }
 
     private void verifyBagMocks(int remoteGetTimes, int localGetTimes, int localCreateTimes, int localUpdateTimes) {
-        verify(remoteBag, times(remoteGetTimes)).getBags(params);
+        verify(remoteBag, times(remoteGetTimes)).getBags(any());
         verify(localBag, times(localGetTimes)).getBag(bag.getUuid());
         verify(localBag, times(localCreateTimes)).createBag(bag);
         verify(localBag, times(localUpdateTimes)).updateBag(bag.getUuid(), bag);
+    }
+
+    @Test
+    public void testSyncMultiple() throws InterruptedException {
+        Bag b1 = setupBag();
+        Bag b2 = setupBag();
+        Bag b3 = setupBag();
+        Response<Bag> multi = new Response<>();
+        multi.setCount(3);
+        multi.setNext(null);
+        multi.setPrevious(null);
+        multi.setResults(ImmutableList.of(b1, b2, b3));
+
+        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
+        when(remoteBag.getBags(any()))
+                .thenReturn(new SuccessfulCall<>(multi));
+        when(localBag.getBag(b1.getUuid()))
+                .thenReturn(new SuccessfulCall<>(b1));
+        when(localBag.getBag(b2.getUuid()))
+                .thenReturn(new SuccessfulCall<>(b2));
+        when(localBag.getBag(b3.getUuid()))
+                .thenReturn(new SuccessfulCall<>(b3));
+        when(localBag.updateBag(b1.getUuid(), b1))
+                .thenReturn(new SuccessfulCall<>(b1));
+        when(localBag.updateBag(b2.getUuid(), b2))
+                .thenReturn(new SuccessfulCall<>(b2));
+        when(localBag.updateBag(b3.getUuid(), b3))
+                .thenReturn(new SuccessfulCall<>(b3));
+
+        synchronizer.readLastSync();
+        synchronizer.syncBags();
+
+        // blockUnitShutdown();
+
+        verify(localBag, times(3)).getBag(any());
     }
 
     /**
@@ -70,7 +109,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagSuccessfulSync() throws InterruptedException {
-        synchronizer.service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
+        // Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
         when(remoteBag.getBags(params))
                 .thenReturn(new SuccessfulCall<>(responseWrapper(bag)));
         when(localBag.getBag(bag.getUuid()))
@@ -80,7 +119,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
         synchronizer.readLastSync();
         synchronizer.syncBags();
 
-        blockUnitShutdown();
+        // blockUnitShutdown();
         verifyBagMocks(1, 1, 0, 1);
         Assert.assertNotEquals(epoch, synchronizer.lastSync.lastBagSync(node));
     }
@@ -91,12 +130,11 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagRemoteException() throws InterruptedException {
-        synchronizer.service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
+        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
         when(remoteBag.getBags(params)).thenReturn(new ExceptedCall<>(responseWrapper(bag)));
         synchronizer.readLastSync();
         synchronizer.syncBags();
 
-        blockUnitShutdown();
         verifyBagMocks(1, 0, 0, 0);
         Assert.assertEquals(epoch, synchronizer.lastSync.lastBagSync(node));
     }
@@ -107,12 +145,11 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagRemoteFailure() throws InterruptedException {
-        synchronizer.service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
+        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
         when(remoteBag.getBags(params)).thenReturn(new FailedCall<>(responseWrapper(bag)));
         synchronizer.readLastSync();
         synchronizer.syncBags();
 
-        blockUnitShutdown();
 
         verifyBagMocks(1, 0, 0, 0);
         Assert.assertEquals(epoch, synchronizer.lastSync.lastBagSync(node));
@@ -124,7 +161,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagLocalException() throws InterruptedException {
-        synchronizer.service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
+        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
         when(remoteBag.getBags(params)).thenReturn(new SuccessfulCall<>(responseWrapper(bag)));
         when(localBag.getBag(bag.getUuid()))
                 .thenReturn(new ExceptedCall<>(bag));
@@ -133,7 +170,6 @@ public class SynchronizeBagTest extends SynchronizerTest {
         synchronizer.readLastSync();
         synchronizer.syncBags();
 
-        blockUnitShutdown();
 
         verifyBagMocks(1, 1, 1, 0);
         Assert.assertEquals(epoch, synchronizer.lastSync.lastBagSync(node));
@@ -145,7 +181,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagLocalFailure() throws InterruptedException {
-        synchronizer.service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
+        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
         when(remoteBag.getBags(params)).thenReturn(new SuccessfulCall<>(responseWrapper(bag)));
         when(localBag.getBag(bag.getUuid()))
                 .thenReturn(new SuccessfulCall<>(bag));
@@ -154,7 +190,6 @@ public class SynchronizeBagTest extends SynchronizerTest {
         synchronizer.readLastSync();
         synchronizer.syncBags();
 
-        blockUnitShutdown();
 
         verifyBagMocks(1, 1, 0, 1);
         Assert.assertEquals(epoch, synchronizer.lastSync.lastBagSync(node));
