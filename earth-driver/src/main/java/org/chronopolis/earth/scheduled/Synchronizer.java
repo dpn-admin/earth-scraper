@@ -35,10 +35,17 @@ import retrofit2.Call;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Executors;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.StreamSupport;
 
 /**
  * TODO: Make sure we only sync items which the remote node is the admin node of
@@ -67,7 +74,7 @@ public class Synchronizer {
     NodeAPIs nodeAPIs;
 
     @Autowired
-    LocalAPI local;
+    LocalAPI localAPI;
 
     LastSync lastSync;
     ListeningExecutorService service;
@@ -102,7 +109,7 @@ public class Synchronizer {
     }
 
     void syncTransfers() {
-        BalustradeTransfers transfers = local.getTransfersAPI();
+        BalustradeTransfers transfers = localAPI.getTransfersAPI();
 
         for (String node : transferAPIs.getApiMap().keySet()) {
             DateTime now = DateTime.now();
@@ -141,10 +148,9 @@ public class Synchronizer {
                     if (syncResponse.isSuccess()) {
                         log.info("[{}]: Successfully updated replication {}", node, replication.getReplicationId());
                     } else {
-                        log.warn("[{}]: Unable to update replication {}", node, replication.getReplicationId(), syncResponse.errorBody().string());
+                        log.warn("[{}]: Unable to update replication {}: {}", node, replication.getReplicationId(), syncResponse.errorBody().string());
                         success = false;
                     }
-
                 } catch (IOException e) {
                     success = false;
                     log.error("Error in call", e);
@@ -172,59 +178,152 @@ public class Synchronizer {
     }
 
     void syncBags() {
-        BalustradeBag bagAPI = local.getBagAPI();
+        BalustradeBag local = localAPI.getBagAPI();
         Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
         for (String node : apis.keySet()) {
             DateTime now = DateTime.now();
             String after = lastSync.lastBagSync(node);
-            BalustradeBag api = apis.get(node);
-            Call<Response<Bag>> call = api.getBags(ImmutableMap.of(
-                    "admin_node", node,
-                    "after", after));
+            BalustradeBag remote = apis.get(node);
 
-            retrofit2.Response<Response<Bag>> http = http(call);
-            boolean success = http.isSuccess();
-            List<Bag> bags = ImmutableList.of();
+            Map<String, String> params = new HashMap<>();
+            params.put("admin_node", node);
+            params.put("after", after);
 
-            if (success) {
-                bags = http.body().getResults();
-            }
+            log.info("[{}]: Syncing bags", node);
 
-            log.info("[{}]: {} Bags to sync", node, bags.size());
-            for (Bag bag : bags) {
-                log.trace("[{}]: Updating bag {}", node, bag.getUuid());
-                SimpleCallback<Bag> bagCB = new SimpleCallback<>();
+            PageIterable<Bag> it = new PageIterable<>(params, remote::getBags);
+            boolean failure = StreamSupport.stream(it.spliterator(), false)
+                    .map(f -> f.map(b -> syncLocal(local::getBag, local::createBag, local::updateBag, b, b.getUuid())))
+                    .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
 
-                Call<Bag> sync;
-                Call<Bag> get = bagAPI.getBag(bag.getUuid());
-                get.enqueue(bagCB);
-                Optional<Bag> bagResponse = bagCB.getResponse();
-
-                if (bagResponse.isPresent()) {
-                    sync = bagAPI.updateBag(bag.getUuid(), bag);
-                } else {
-                    sync = bagAPI.createBag(bag);
-                }
-
-                try {
-                    retrofit2.Response<Bag> syncResponse = sync.execute();
-                    if (syncResponse.isSuccess()) {
-                        log.info("[{}]: Updated bag {} successfully", node, bag.getUuid());
-                    } else {
-                        log.warn("[{}]: Unable to update bag {}", node, bag.getUuid(), syncResponse.errorBody().string());
-                        success = false;
-                    }
-                } catch (IOException e) {
-                    log.error("Error in call", e);
-                    success = false;
-                }
-            }
-
-            if (success) {
-                log.info("Adding last sync to bags for node {}", node);
+            if (!failure) {
+                log.info("Adding last sync to bags for {}", node);
                 lastSync.addLastBagSync(node, now);
+            } else {
+                log.warn("Not updating last sync to bags for {}", node);
             }
         }
+    }
+
+    // We'll probably want to split these out in to their own classes, but for now this is fine
+
+    class PageIterable<T> implements Iterable<Optional<T>> {
+
+        final Map<String, String> params;
+        final Function<Map<String, String>, Call<Response<T>>> get;
+
+        public PageIterable(Map<String, String> params, Function<Map<String, String>, Call<Response<T>>> get) {
+            this.get = get;
+            this.params = params;
+        }
+
+        @Override
+        public Iterator<Optional<T>> iterator() {
+            return new PageIterator<>(params, get);
+        }
+
+    }
+
+    // TODO: Figure out what we want to do with count
+    class PageIterator<T> implements Iterator<Optional<T>> {
+
+        final int pageSize = 25;
+
+        int page;
+        int count;
+        List<T> results;
+        Map<String, String> params;
+        Function<Map<String, String>, Call<Response<T>>> get;
+
+        public PageIterator(Map<String, String> params, Function<Map<String, String>, Call<Response<T>>> get) {
+            this.page = 1;
+            this.get = get;
+            this.params = params;
+            this.results = new ArrayList<>();
+            this.params.put("page", String.valueOf(page));
+            populate();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return results.size() > 0 || (page-1) * pageSize <= count;
+        }
+
+        @Override
+        public Optional<T> next() {
+            if (results.isEmpty()) {
+                populate();
+            }
+
+            return Optional.ofNullable(results.remove(0));
+        }
+
+        private void populate() {
+            // On the first run this *should* have page = 1
+            // Then we increment for successive runs
+            log.info("{}", params);
+            Call<Response<T>> apply = get.apply(params);
+            try {
+                retrofit2.Response<Response<T>> response = apply.execute();
+                if (response.isSuccess()) {
+                    count = response.body().getCount();
+                    results.addAll(response.body().getResults());
+                } else {
+                    count = -1;
+                    results.add(null);
+                }
+
+                // Increment our page and update our params
+                ++page;
+                params.put("page", String.valueOf(page));
+            } catch (IOException e) {
+                log.warn("Error communicating with remote server");
+                count = -1;
+                results.add(null);
+            }
+        }
+
+        @Override
+        public void remove() {
+            throw new RuntimeException("Not Supported");
+        }
+
+        @Override
+        public void forEachRemaining(Consumer<? super Optional<T>> action) {
+            while (hasNext()) {
+                action.accept(next());
+            }
+        }
+    }
+
+    static<T, U> boolean syncLocal(Function<U, Call<T>> get, Function<T, Call<T>> create, BiFunction<U, T, Call<T>> update, T argT, U argU) {
+        Call<T> sync;
+        boolean success = true;
+        SimpleCallback<T> getCB = new SimpleCallback<T>();
+        Call<T> getCall = get.apply(argU);
+        getCall.enqueue(getCB);
+        Optional<T> response = getCB.getResponse();
+
+        if (response.isPresent()) {
+            sync = update.apply(argU, argT);
+        } else {
+            sync = create.apply(argT);
+        }
+
+        try {
+            retrofit2.Response<T> execute = sync.execute();
+            if (execute.isSuccess()) {
+                log.info("Successfully ran sync");
+            } else {
+                success = false;
+                log.warn("Unable to perform sync");
+            }
+        } catch (IOException e) {
+            success = false;
+            log.error("Error in sync call");
+        }
+
+        return success;
     }
 
     /**
