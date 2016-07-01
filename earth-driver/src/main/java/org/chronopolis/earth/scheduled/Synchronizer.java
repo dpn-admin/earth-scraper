@@ -1,7 +1,5 @@
 package org.chronopolis.earth.scheduled;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -109,60 +107,31 @@ public class Synchronizer {
     }
 
     void syncTransfers() {
-        BalustradeTransfers transfers = localAPI.getTransfersAPI();
+        BalustradeTransfers local = localAPI.getTransfersAPI();
 
         for (String node : transferAPIs.getApiMap().keySet()) {
             DateTime now = DateTime.now();
             String after = lastSync.lastReplicationSync(node);
-            BalustradeTransfers api = transferAPIs.getApiMap().get(node);
-            Call<Response<Replication>> call = api.getReplications(ImmutableMap.of(
-                    "from_node", node,
-                    "after", after));
+            BalustradeTransfers remote = transferAPIs.getApiMap().get(node);
 
-            retrofit2.Response<Response<Replication>> http = http(call);
-            boolean success = http.isSuccess();
-            List<Replication> replications = ImmutableList.of();
-            if (success) {
-                replications = http.body().getResults();
-            }
+            Map<String, String> params = new HashMap<>();
+            params.put("from_node", node);
+            params.put("after", after);
 
-            log.info("[{}]: {} Replications to sync", node, replications.size());
-            for (Replication replication : replications) {
-                SimpleCallback<Replication> rcb = new SimpleCallback<>();
-                log.trace("[{}]: Updating replication {}", node, replication.getReplicationId());
+            log.info("[{}]: Syncing replications", node);
 
-                // First check if the replication exists
-                Call<Replication> syncCall;
-                Call<Replication> get = transfers.getReplication(replication.getReplicationId());
-                get.enqueue(rcb);
-                Optional<Replication> replResponse = rcb.getResponse();
+            PageIterable<Replication> it = new PageIterable<>(params, remote::getReplications);
+            boolean failure = StreamSupport.stream(it.spliterator(), false)
+                    .map(f -> f.map(r -> syncLocal(local::getReplication, local::createReplication, local::updateReplication, r, r.getReplicationId())))
+                    .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
 
-                if (replResponse.isPresent()) {
-                    syncCall = transfers.updateReplication(replication.getReplicationId(), replication);
-                } else {
-                    syncCall = transfers.createReplication(replication);
-                }
-
-                try {
-                    retrofit2.Response<Replication> syncResponse = syncCall.execute();
-                    if (syncResponse.isSuccess()) {
-                        log.info("[{}]: Successfully updated replication {}", node, replication.getReplicationId());
-                    } else {
-                        log.warn("[{}]: Unable to update replication {}: {}", node, replication.getReplicationId(), syncResponse.errorBody().string());
-                        success = false;
-                    }
-                } catch (IOException e) {
-                    success = false;
-                    log.error("Error in call", e);
-                }
-            }
-
-            if (success) {
-                log.info("Adding last sync to repl for node {}", node);
+            if (!failure) {
+                log.info("Adding last sync to replication for {}", node);
                 lastSync.addLastReplication(node, now);
+            } else {
+                log.warn("Not updating last sync to replication for {}", node);
             }
         }
-
     }
 
     static <T> retrofit2.Response<Response<T>> http(Call<Response<T>> call) {
