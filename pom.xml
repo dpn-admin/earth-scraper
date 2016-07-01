@@ -61,8 +61,16 @@
         </snapshotRepository>
     </distributionManagement>
 
+    <repositories>
+        <repository>
+            <id>releases</id>
+            <name>ADAPT Internal Releases</name>
+            <url>https://scm.umiacs.umd.edu/maven/adapt/content/repositories/releases/</url>
+        </repository>
+    </repositories>
+
     <properties>
-        <java.version>1.7</java.version>
+        <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.license>umd</project.license>
     </properties>
