@@ -56,7 +56,7 @@ public class SynchronizerTest {
         synchronizer = new Synchronizer();
         synchronizer.formatter = ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
         // Init our fields
-        synchronizer.local = localAPI;
+        synchronizer.localAPI = localAPI;
         synchronizer.bagAPIs = new BagAPIs();
         synchronizer.nodeAPIs = new NodeAPIs();
         synchronizer.transferAPIs = new TransferAPIs();
