@@ -50,11 +50,6 @@ else
     echo "Jar already built"
 fi
 
-if [ -n $BUILD_NUMBER ]; then
-    BUILD_NUMBER=1
-fi
-
-
 # Copy the artifacts
 cp $jarfile rpm/$finaljar
 cp earth-driver/target/classes/application.yml rpm/$sources
@@ -62,4 +57,4 @@ cp earth-driver/src/main/sh/dpn-intake.sh rpm/$sources
 
 # cd back to where we started and build the rpm
 cd $rpmdir
-rpmbuild -ba --define="_topdir $PWD" --define="_tmppath $PWD/tmp" --define="ver $version" --define="rel $BUILD_NUMBER" SPECS/dpn.spec
+rpmbuild -ba --define="_topdir $PWD" --define="_tmppath $PWD/tmp" --define="ver $version" SPECS/dpn.spec

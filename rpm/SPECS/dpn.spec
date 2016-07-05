@@ -4,10 +4,11 @@
 %define _prefix %{_usr}/lib/dpn
 %define _confdir /etc/dpn
 %define service dpn-intake
+%define build_time %(date + "%Y%m%d")
 
 Name: dpn-intake
 Version: %{ver}
-Release: %{rel}%{?dist}
+Release: %{build_time}%{?dist}
 Source: dpn-intake.jar
 Source1: dpn-intake.sh
 Source2: application.yml
