@@ -5,8 +5,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import okhttp3.MediaType;
-import okhttp3.ResponseBody;
 import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
@@ -121,6 +119,7 @@ public class Synchronizer {
             log.info("[{}]: Syncing replications", node);
 
             PageIterable<Replication> it = new PageIterable<>(params, remote::getReplications);
+            // We may be able to use a partially applied function here (and below), but it's not too big of a deal
             boolean failure = StreamSupport.stream(it.spliterator(), false)
                     .map(f -> f.map(r -> syncLocal(local::getReplication, local::createReplication, local::updateReplication, r, r.getReplicationId())))
                     .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
@@ -132,18 +131,6 @@ public class Synchronizer {
                 log.warn("Not updating last sync to replication for {}", node);
             }
         }
-    }
-
-    static <T> retrofit2.Response<Response<T>> http(Call<Response<T>> call) {
-        retrofit2.Response<Response<T>> response;
-        try {
-            response = call.execute();
-        } catch (IOException e) {
-            log.error("", e);
-            response = retrofit2.Response.error(503, ResponseBody.create(MediaType.parse("text/plain"), "Server is not available"));
-        }
-
-        return response;
     }
 
     void syncBags() {
@@ -230,7 +217,8 @@ public class Synchronizer {
         private void populate() {
             // On the first run this *should* have page = 1
             // Then we increment for successive runs
-            log.info("{}", params);
+            // When we fail, add a null object which serves as a "poison pill"
+            // log.info("{}", params);
             Call<Response<T>> apply = get.apply(params);
             try {
                 retrofit2.Response<Response<T>> response = apply.execute();
@@ -265,6 +253,20 @@ public class Synchronizer {
         }
     }
 
+    /**
+     * Our main synchronization function. Takes functions for getting, creating, and updating a type T.
+     * These should all be local functions, as it's just determining whether a create or an update call
+     * needs to be run because of the way the registry works.
+     *
+     * @param get Function to get T from the registry
+     * @param create Function to create T in the registry
+     * @param update Function to update T in the registry
+     * @param argT The T to sync
+     * @param argU An identifier for T used in the get/update calls
+     * @param <T> A type, ideally part of the registry models
+     * @param <U> An identifier for T
+     * @return the result of the synchronization
+     */
     static<T, U> boolean syncLocal(Function<U, Call<T>> get, Function<T, Call<T>> create, BiFunction<U, T, Call<T>> update, T argT, U argU) {
         Call<T> sync;
         boolean success = true;
@@ -285,11 +287,11 @@ public class Synchronizer {
                 log.info("Successfully ran sync");
             } else {
                 success = false;
-                log.warn("Unable to perform sync");
+                log.warn("Unable to perform sync: {}", execute.errorBody().string());
             }
         } catch (IOException e) {
             success = false;
-            log.error("Error in sync call");
+            log.error("Error in sync call", e);
         }
 
         return success;
@@ -327,21 +329,6 @@ public class Synchronizer {
                     log.error("Error syncing node", throwable);
                 }
             });
-        }
-    }
-
-    // TODO: Might be able to do something like this to recognize
-    // when calls have failed in the completable futures
-    private class HeldException<T> {
-        T t;
-        Throwable throwable;
-
-        public HeldException(T t) {
-            this.t = t;
-        }
-
-        public boolean isSuccess() {
-            return throwable == null;
         }
     }
 
