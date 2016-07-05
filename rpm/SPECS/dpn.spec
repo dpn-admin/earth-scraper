@@ -4,7 +4,7 @@
 %define _prefix %{_usr}/lib/dpn
 %define _confdir /etc/dpn
 %define service dpn-intake
-%define build_time %(date + "%Y%m%d")
+%define build_time %(date +"%Y%m%d")
 
 Name: dpn-intake
 Version: %{ver}
