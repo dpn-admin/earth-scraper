@@ -127,8 +127,6 @@ public class EarthConfiguration {
                     .baseUrl(endpoint.getApiRoot())
                     .addConverterFactory(GsonConverterFactory.create(gson))
                     .client(client)
-                    // .setLogLevel(RestAdapter.LogLevel.NONE)
-                    // .setExecutors(Executors.newCachedThreadPool(), Executors.newSingleThreadExecutor())
                     .build();
 
             adapters.add(adapter);
@@ -169,7 +167,6 @@ public class EarthConfiguration {
                 .baseUrl(local.getApiRoot())
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .client(client)
-                // .setLogLevel(RestAdapter.LogLevel.NONE)
                 .build();
 
         return new LocalAPI().setNode(local.getName())
@@ -220,7 +217,6 @@ public class EarthConfiguration {
                 .baseUrl(api.getEndpoint())
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create(gson))
-                // .setLogLevel(RestAdapter.LogLevel.FULL)
                 .build();
 
         return adapter.create(IngestAPI.class);
