@@ -22,7 +22,7 @@ import java.util.concurrent.CountDownLatch;
 public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
     private final Logger log = LoggerFactory.getLogger(SimpleCallback.class);
 
-    private Optional<E> response;
+    private E response;
     private CountDownLatch latch = new CountDownLatch(1);
 
     @Override
@@ -33,7 +33,7 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
                 response.code(),
                 response.message());
 
-            this.response = Optional.of(response.body());
+            this.response = response.body();
         } else {
             String errorBody;
             try {
@@ -43,7 +43,6 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
             }
 
             log.warn("HTTP call was not successful {}", response.code(), errorBody);
-            this.response = Optional.empty();
         }
 
         latch.countDown();
@@ -52,7 +51,6 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
     @Override
     public void onFailure(Throwable throwable) {
         log.error("Error in HTTP Call: ", throwable);
-        this.response = Optional.empty();
         latch.countDown();
     }
 
@@ -64,7 +62,7 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
             log.error("Error awaiting latch count down", e);
         }
 
-        return response;
+        return Optional.ofNullable(response);
     }
 
 }
