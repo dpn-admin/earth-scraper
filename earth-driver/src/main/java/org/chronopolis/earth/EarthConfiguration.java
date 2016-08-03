@@ -11,6 +11,8 @@ import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.EventAPIs;
+import org.chronopolis.earth.api.Events;
 import org.chronopolis.earth.api.LocalAPI;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
@@ -85,6 +87,8 @@ public class EarthConfiguration {
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                 .registerTypeAdapter(DateTime.class, new DateTimeSerializer())
                 .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
+                .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer())
+                .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeDeserializer())
                 .registerTypeAdapter(Replication.Status.class, new ReplicationStatusSerializer())
                 .registerTypeAdapter(Replication.Status.class, new ReplicationStatusDeserializer())
                 .serializeNulls()
@@ -93,12 +97,12 @@ public class EarthConfiguration {
 
     @Bean
     List<Retrofit> adapters(TransferAPIs transferAPIs,
+                            EventAPIs eventAPIs,
                             NodeAPIs nodeAPIs,
                             BagAPIs bagAPIs,
                             Gson gson) {
         List<Retrofit> adapters = new ArrayList<>();
         Dpn dpn = settings.getDpn();
-
 
         for (Endpoint endpoint : dpn.getRemote()) {
             log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
@@ -132,6 +136,7 @@ public class EarthConfiguration {
             adapters.add(adapter);
             bagAPIs.put(endpoint.getName(), adapter.create(BalustradeBag.class));
             nodeAPIs.put(endpoint.getName(), adapter.create(BalustradeNode.class));
+            eventAPIs.put(endpoint.getName(), adapter.create(Events.class));
             transferAPIs.put(endpoint.getName(), adapter.create(BalustradeTransfers.class));
         }
 
@@ -172,6 +177,7 @@ public class EarthConfiguration {
         return new LocalAPI().setNode(local.getName())
                 .setBagAPI(adapter.create(BalustradeBag.class))
                 .setNodeAPI(adapter.create(BalustradeNode.class))
+                .setEventsAPI(adapter.create(Events.class))
                 .setTransfersAPI(adapter.create(BalustradeTransfers.class));
     }
 
