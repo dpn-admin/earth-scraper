@@ -1,5 +1,6 @@
 package org.chronopolis.earth.api;
 
+import org.chronopolis.earth.models.Digest;
 import org.chronopolis.earth.models.FixityCheck;
 import org.chronopolis.earth.models.Ingest;
 import org.chronopolis.earth.models.Response;
@@ -34,4 +35,8 @@ public interface Events {
 
     @POST("api-v2/fixity_check")
     Call<FixityCheck> createFixityCheck(@Body FixityCheck fixityCheck);
+
+    @GET("api-v2/digest")
+    Call<Response<Digest>> getDigests(@QueryMap Map<String, String> params);
+
 }

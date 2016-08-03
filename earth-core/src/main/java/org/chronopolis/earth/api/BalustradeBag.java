@@ -1,6 +1,7 @@
 package org.chronopolis.earth.api;
 
 import org.chronopolis.earth.models.Bag;
+import org.chronopolis.earth.models.Digest;
 import org.chronopolis.earth.models.Response;
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -33,5 +34,14 @@ public interface BalustradeBag {
 
     @PUT("api-v1/bag/{uuid}")
     Call<Bag> updateBag(@Path("uuid") String uuid, @Body Bag bag);
+
+    @GET("api-v2/bag/{uuid}/digest")
+    Call<Response<Digest>> getDigests(@QueryMap Map<String, String> params);
+
+    @POST("api-v2/bag/{uuid}/digest")
+    Call<Digest> createDigest(@Path("uuid") String uuid, @Body Digest digest);
+
+    @GET("api-v2/bag/{uuid}/digest/{algorithm}")
+    Call<Digest> getDigest(@Path("uuid") String uuid, @Path("algorithm") String algorithm);
 
 }
