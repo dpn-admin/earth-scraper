@@ -3,6 +3,7 @@ package org.chronopolis.earth.api;
 import java.util.Map;
 
 /**
+ *
  * Created by shake on 10/9/15.
  */
 public class MemberAPIs {
