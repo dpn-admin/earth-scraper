@@ -15,6 +15,7 @@ import java.lang.reflect.Type;
  *
  * Created by shake on 5/7/15.
  */
+@Deprecated
 public class DateTimeDeserializer implements JsonDeserializer<DateTime> {
     DateTimeFormatter fmt = ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
 

@@ -7,6 +7,7 @@ import org.joda.time.DateTime;
  *
  * Created by shake on 5/1/15.
  */
+@Deprecated
 public class Fixity {
 
     String algorithm;
