@@ -19,16 +19,16 @@ import java.util.Map;
  */
 public interface BalustradeMember {
 
-    @GET("api-v1/member/")
+    @GET("api-v2/member/")
     Call<Response<Member>> getMembers(@QueryMap Map<String, String> params);
 
-    @GET("api-v1/member/{uuid}/")
+    @GET("api-v2/member/{uuid}/")
     Call<Member> getMember(@Path("/uuid") String memberUUID);
 
-    @POST("api-v1/member/")
+    @POST("api-v2/member/")
     Call<Member> createMember(@Body Member member);
 
-    @PUT("api-v1/member/{uuid}/")
+    @PUT("api-v2/member/{uuid}/")
     Call<Member> updateMember(@Path("/uuid") String memberUUID, @Body Member member);
 
 }

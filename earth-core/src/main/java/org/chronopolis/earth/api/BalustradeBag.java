@@ -24,16 +24,16 @@ import java.util.Map;
  */
 public interface BalustradeBag {
 
-    @GET("api-v1/bag")
+    @GET("api-v2/bag")
     Call<SumResponse<Bag>> getBags(@QueryMap Map<String, String> params);
 
-    @POST("api-v1/bag")
+    @POST("api-v2/bag")
     Call<Bag> createBag(@Body Bag bag);
 
-    @GET("api-v1/bag/{uuid}")
+    @GET("api-v2/bag/{uuid}")
     Call<Bag> getBag(@Path("uuid") String uuid);
 
-    @PUT("api-v1/bag/{uuid}")
+    @PUT("api-v2/bag/{uuid}")
     Call<Bag> updateBag(@Path("uuid") String uuid, @Body Bag bag);
 
     @GET("api-v2/bag/{uuid}/digest")

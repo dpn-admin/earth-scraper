@@ -16,10 +16,10 @@ import java.util.Map;
  */
 public interface BalustradeNode {
 
-    @GET("api-v1/node/")
+    @GET("api-v2/node/")
     Call<Response<Node>> getNodes(@QueryMap Map<String, Integer> params);
 
-    @GET("api-v1/node/{name}/")
+    @GET("api-v2/node/{name}/")
     Call<Node> getNode(@Path("name") String name);
 
 }

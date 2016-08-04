@@ -22,35 +22,35 @@ import java.util.Map;
 public interface BalustradeTransfers {
 
     // Replications
-    @GET("api-v1/replicate/")
+    @GET("api-v2/replicate/")
     Call<Response<Replication>> getReplications(@QueryMap Map<String, String> params);
 
-    @POST("api-v1/replicate/")
+    @POST("api-v2/replicate/")
     Call<Replication> createReplication(@Body Replication replication);
 
-    @GET("api-v1/replicate/{id}/")
+    @GET("api-v2/replicate/{id}/")
     Call<Replication> getReplication(@Path("id") String id);
 
-    @PUT("api-v1/replicate/{id}/")
+    @PUT("api-v2/replicate/{id}/")
     Call<Replication> updateReplication(@Path("id") String id, @Body Replication replication);
 
-    @PATCH("api-v1/replicate/{id}/")
+    @PATCH("api-v2/replicate/{id}/")
     Call<Replication> patchReplication(@Path("id") String id, @Body Replication replication);
 
     // Restores
-    @GET("api-v1/restore/")
+    @GET("api-v2/restore/")
     Call<Response<Restore>> getRestores(@QueryMap Map<String, String> params);
 
-    @POST("api-v1/restore/")
+    @POST("api-v2/restore/")
     Call<Restore> createRestore(@Body Restore replication);
 
-    @GET("api-v1/restore/{id}/")
+    @GET("api-v2/restore/{id}/")
     Call<Restore> getRestore(@Path("id") String id);
 
-    @PUT("api-v1/restore/{id}/")
+    @PUT("api-v2/restore/{id}/")
     Call<Restore> updateRestore(@Path("id") String id, @Body Restore replication);
 
-    @PATCH("api-v1/restore/{id}/")
+    @PATCH("api-v2/restore/{id}/")
     Call<Restore> patchRestore(@Path("id") String id, @Body Restore replication);
 
 }
