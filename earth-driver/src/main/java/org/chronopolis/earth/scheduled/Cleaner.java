@@ -61,7 +61,7 @@ public class Cleaner {
 
     private void clean(Replication replication) {
         String from = replication.getFromNode();
-        String uuid = replication.getUuid();
+        String uuid = replication.getBag();
 
         Path bag = Paths.get(settings.getStage(), from, uuid);
         if (bag.toFile().exists()) {

@@ -21,7 +21,6 @@ import org.chronopolis.rest.api.IngestAPI;
 import org.chronopolis.rest.entities.Bag;
 import org.chronopolis.rest.models.BagStatus;
 import org.chronopolis.rest.models.IngestRequest;
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +41,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -130,7 +130,7 @@ public class Downloader {
                 transfers = getTransfers(api, params);
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
-                    String uuid = transfer.getUuid();
+                    String uuid = transfer.getBag();
 
                     try {
                         download(api, transfer);
@@ -168,7 +168,7 @@ public class Downloader {
                 transfers = getTransfers(api, params);
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
-                    String uuid = transfer.getUuid();
+                    String uuid = transfer.getBag();
                     // transfer.setBagValid(null);
 
                     try {
@@ -228,7 +228,7 @@ public class Downloader {
                     }
 
                     // String from = transfer.getFromNode();
-                    String uuid = transfer.getUuid();
+                    String uuid = transfer.getBag();
 
                     Map<String, Object> chronParams = Maps.newHashMap();
                     chronParams.put("name", uuid);
@@ -276,7 +276,7 @@ public class Downloader {
     public void store(BalustradeTransfers api, Replication transfer) {
         SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setStatus(Replication.Status.STORED);
-        transfer.setUpdatedAt(new DateTime());
+        transfer.setUpdatedAt(ZonedDateTime.now());
         Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
         call.enqueue(callback);
     }
@@ -296,8 +296,8 @@ public class Downloader {
             // push to chronopolis
             IngestRequest request = new IngestRequest();
             request.setDepositor(transfer.getFromNode());
-            request.setName(transfer.getUuid());
-            request.setLocation(transfer.getFromNode() + "/" + transfer.getUuid());
+            request.setName(transfer.getBag());
+            request.setLocation(transfer.getFromNode() + "/" + transfer.getBag());
             request.setRequiredReplications(1);
             request.setReplicatingNodes(ImmutableList.of(ingest.getNode()));
 
@@ -327,7 +327,7 @@ public class Downloader {
         }
 
         boolean valid;
-        String uuid = transfer.getUuid();
+        String uuid = transfer.getBag();
         String stage = settings.getStage();
         String depositor = transfer.getFromNode();
 
@@ -348,7 +348,7 @@ public class Downloader {
         transfer.setBagValid(valid);
 
         SimpleCallback<Replication> callback = new SimpleCallback<>();
-        transfer.setUpdatedAt(new DateTime());
+        transfer.setUpdatedAt(ZonedDateTime.now());
         Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
         call.enqueue(callback);
     }
@@ -406,7 +406,7 @@ public class Downloader {
      */
     public void download(BalustradeTransfers api, Replication transfer) throws InterruptedException, IOException {
         String stage = settings.getStage();
-        String uuid = transfer.getUuid();
+        String uuid = transfer.getBag();
         String from = transfer.getFromNode();
 
         log.debug("[{}] Downloading {} from {}\n", from, uuid, transfer.getLink());
@@ -442,7 +442,7 @@ public class Downloader {
 
                 SimpleCallback<Replication> callback = new SimpleCallback<>();
                 transfer.setStatus(Replication.Status.RECEIVED);
-                transfer.setUpdatedAt(new DateTime());
+                transfer.setUpdatedAt(ZonedDateTime.now());
                 Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
                 call.enqueue(callback);
             }
@@ -482,13 +482,13 @@ public class Downloader {
         String stage = settings.getStage();
         Path tarball = Paths.get(stage,
                 transfer.getFromNode(),
-                transfer.getUuid() + ".tar");
+                transfer.getBag() + ".tar");
         HashCode hash = null;
         try {
             TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball));
             TarArchiveEntry entry;
             while ((entry = tais.getNextTarEntry()) != null) {
-                if (entry.getName().equals(transfer.getUuid() + "/" + TAG_MANIFEST)) {
+                if (entry.getName().equals(transfer.getBag() + "/" + TAG_MANIFEST)) {
                     // TODO: size = 1MB, in the event of absurdly large tag manifests
                     int size = (int) entry.getSize();
                     byte[] buf = new byte[size];
@@ -501,7 +501,7 @@ public class Downloader {
                 }
             }
         } catch (IOException e) {
-            log.error("Error trying to get receipt for bag {}", transfer.getUuid(), e);
+            log.error("Error trying to get receipt for bag {}", transfer.getBag(), e);
             return;
         }
 
@@ -511,7 +511,7 @@ public class Downloader {
 
         // Do the update
         SimpleCallback<Replication> callback = new SimpleCallback<>();
-        transfer.setUpdatedAt(new DateTime());
+        transfer.setUpdatedAt(ZonedDateTime.now());
         Call<Replication> call = balustrade.updateReplication(transfer.getReplicationId(), transfer);
         call.enqueue(callback);
         Optional<Replication> response = callback.getResponse();
@@ -530,7 +530,7 @@ public class Downloader {
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public void untar(Replication transfer) throws IOException {
         String stage = settings.getStage();
-        Path tarball = Paths.get(stage, transfer.getFromNode(), transfer.getUuid() + ".tar");
+        Path tarball = Paths.get(stage, transfer.getFromNode(), transfer.getBag() + ".tar");
 
         String depositor = transfer.getFromNode();
 

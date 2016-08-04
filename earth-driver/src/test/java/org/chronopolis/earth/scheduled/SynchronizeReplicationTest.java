@@ -3,11 +3,11 @@ package org.chronopolis.earth.scheduled;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.chronopolis.earth.models.Replication;
-import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.ZonedDateTime;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 
@@ -40,11 +40,11 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         String uuid = UUID.randomUUID().toString();
         Replication r = new Replication();
         r.setReplicationId(uuid);
-        r.setUuid(uuid);
+        r.setBag(uuid);
         r.setFromNode(node);
         r.setToNode(node);
-        r.setCreatedAt(DateTime.now());
-        r.setUpdatedAt(DateTime.now());
+        r.setCreatedAt(ZonedDateTime.now());
+        r.setUpdatedAt(ZonedDateTime.now());
         r.setBagValid(true);
         r.setFixityNonce("");
         r.setFixityAccept(true);

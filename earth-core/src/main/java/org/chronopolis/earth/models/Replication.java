@@ -1,46 +1,50 @@
 package org.chronopolis.earth.models;
 
-import org.joda.time.DateTime;
+
+import java.time.ZonedDateTime;
 
 /**
  * Representation of a replication transfer in the DPN REST api
  *
  * Created by shake on 3/2/15.
  */
+@SuppressWarnings("WeakerAccess")
 public class Replication {
 
     String replicationId;
     String fromNode;
     String toNode;
-    String uuid;
+    String bag;
     String fixityAlgorithm;
     String fixityNonce;
     String fixityValue;
     Boolean fixityAccept;
-    Boolean bagValid;
     String protocol;
     String link;
-    DateTime createdAt;
-    DateTime updatedAt;
+    ZonedDateTime createdAt;
+    ZonedDateTime updatedAt;
+
+    // Might be deprecated soon
+    Boolean bagValid;
     Status status;
 
     public Replication() {
     }
 
-    public DateTime getUpdatedAt() {
+    public ZonedDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public Replication setUpdatedAt(DateTime updatedAt) {
+    public Replication setUpdatedAt(ZonedDateTime updatedAt) {
         this.updatedAt = updatedAt;
         return this;
     }
 
-    public DateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public Replication setCreatedAt(DateTime createdAt) {
+    public Replication setCreatedAt(ZonedDateTime createdAt) {
         this.createdAt = createdAt;
         return this;
     }
@@ -117,12 +121,12 @@ public class Replication {
         return this;
     }
 
-    public String getUuid() {
-        return uuid;
+    public String getBag() {
+        return bag;
     }
 
-    public Replication setUuid(String uuid) {
-        this.uuid = uuid;
+    public Replication setBag(String bag) {
+        this.bag = bag;
         return this;
     }
 
