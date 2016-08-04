@@ -166,9 +166,9 @@ public class Synchronizer {
     class PageIterable<T> implements Iterable<Optional<T>> {
 
         final Map<String, String> params;
-        final Function<Map<String, String>, Call<Response<T>>> get;
+        final Function<Map<String, String>, Call<? extends Response<T>>> get;
 
-        public PageIterable(Map<String, String> params, Function<Map<String, String>, Call<Response<T>>> get) {
+        public PageIterable(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get) {
             this.get = get;
             this.params = params;
         }
@@ -189,9 +189,9 @@ public class Synchronizer {
         int count;
         List<T> results;
         Map<String, String> params;
-        Function<Map<String, String>, Call<Response<T>>> get;
+        Function<Map<String, String>, Call<? extends Response<T>>> get;
 
-        public PageIterator(Map<String, String> params, Function<Map<String, String>, Call<Response<T>>> get) {
+        public PageIterator(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get) {
             this.page = 1;
             this.get = get;
             this.params = params;
@@ -219,9 +219,9 @@ public class Synchronizer {
             // Then we increment for successive runs
             // When we fail, add a null object which serves as a "poison pill"
             // log.info("{}", params);
-            Call<Response<T>> apply = get.apply(params);
+            Call<? extends Response<T>> apply = get.apply(params);
             try {
-                retrofit2.Response<Response<T>> response = apply.execute();
+                retrofit2.Response<? extends Response<T>> response = apply.execute();
                 if (response.isSuccess()) {
                     count = response.body().getCount();
                     results.addAll(response.body().getResults());

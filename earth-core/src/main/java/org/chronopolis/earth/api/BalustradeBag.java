@@ -20,7 +20,9 @@ import static org.chronopolis.earth.api.Version.VERSION;
 /**
  * DPN API for CRUD operations on bags
  *
- * TODO: May be able to inject api version into the interface w/ spring
+ * TODO: Figure out if we want to support getting the total in a single call via SumResponse
+ *       Or if we want to delegate that to something else later because it's not needed in
+ *       this clients functionality
  *
  * Created by shake on 3/27/15.
  */

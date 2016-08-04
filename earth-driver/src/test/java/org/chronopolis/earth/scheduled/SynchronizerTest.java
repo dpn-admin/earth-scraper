@@ -35,12 +35,14 @@ public class SynchronizerTest {
     final String epoch = "1970-01-01T00:00:00Z";
     final String node = "test-node";
 
-    @Mock BalustradeBag remoteBag;
-    @Mock BalustradeTransfers remoteTransfer;
-    @Mock BalustradeNode remoteNode;
     @Mock BalustradeBag localBag;
+    @Mock BalustradeBag remoteBag;
+
     @Mock BalustradeTransfers localTransfer;
+    @Mock BalustradeTransfers remoteTransfer;
+
     @Mock BalustradeNode localNode;
+    @Mock BalustradeNode remoteNode;
 
     Synchronizer synchronizer;
 

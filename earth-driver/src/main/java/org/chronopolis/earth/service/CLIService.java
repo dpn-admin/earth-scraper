@@ -12,6 +12,7 @@ import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.models.SumResponse;
 import org.chronopolis.earth.scheduled.Downloader;
 import org.chronopolis.earth.scheduled.Synchronizer;
 import org.slf4j.Logger;
@@ -170,11 +171,11 @@ public class CLIService implements DpnService {
      */
     private void consumeBag(String name, BalustradeBag api) {
         log.info("Current Admin node: {}", name);
-        SimpleCallback<Response<Bag>> callback = new SimpleCallback<>();
+        SimpleCallback<SumResponse<Bag>> callback = new SimpleCallback<>();
 
-        Call<Response<Bag>> call = api.getBags(ImmutableMap.of("admin_node", name));
+        Call<SumResponse<Bag>> call = api.getBags(ImmutableMap.of("admin_node", name));
         call.enqueue(callback);
-        Optional<Response<Bag>> response = callback.getResponse();
+        Optional<SumResponse<Bag>> response = callback.getResponse();
 
         if (response.isPresent()) {
             Response<Bag> bags = response.get();
