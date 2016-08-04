@@ -1,7 +1,7 @@
 package org.chronopolis.earth.models;
 
-import org.joda.time.DateTime;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -10,6 +10,7 @@ import java.util.Map;
  *
  * Created by shake on 3/27/15.
  */
+@SuppressWarnings("WeakerAccess")
 public class Bag {
 
     String uuid;
@@ -24,8 +25,8 @@ public class Bag {
     List<String> rights;
     List<String> replicatingNodes;
     Map<String, String> fixities;
-    DateTime createdAt;
-    DateTime updatedAt;
+    ZonedDateTime createdAt;
+    ZonedDateTime updatedAt;
     String member;
 
     public Bag() {
@@ -139,20 +140,20 @@ public class Bag {
         return this;
     }
 
-    public DateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public Bag setCreatedAt(DateTime createdAt) {
+    public Bag setCreatedAt(ZonedDateTime createdAt) {
         this.createdAt = createdAt;
         return this;
     }
 
-    public DateTime getUpdatedAt() {
+    public ZonedDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public Bag setUpdatedAt(DateTime updatedAt) {
+    public Bag setUpdatedAt(ZonedDateTime updatedAt) {
         this.updatedAt = updatedAt;
         return this;
     }
