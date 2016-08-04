@@ -9,6 +9,8 @@ import retrofit2.http.QueryMap;
 
 import java.util.Map;
 
+import static org.chronopolis.earth.api.Version.VERSION;
+
 /**
  * DPN API for operations on Nodes
  *
@@ -16,10 +18,10 @@ import java.util.Map;
  */
 public interface BalustradeNode {
 
-    @GET("api-v2/node/")
+    @GET(VERSION + "/node/")
     Call<Response<Node>> getNodes(@QueryMap Map<String, Integer> params);
 
-    @GET("api-v2/node/{name}/")
+    @GET(VERSION + "/node/{name}/")
     Call<Node> getNode(@Path("name") String name);
 
 }

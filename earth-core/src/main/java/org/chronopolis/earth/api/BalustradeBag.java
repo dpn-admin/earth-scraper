@@ -14,6 +14,8 @@ import retrofit2.http.QueryMap;
 
 import java.util.Map;
 
+import static org.chronopolis.earth.api.Version.VERSION;
+
 
 /**
  * DPN API for CRUD operations on bags
@@ -24,25 +26,25 @@ import java.util.Map;
  */
 public interface BalustradeBag {
 
-    @GET("api-v2/bag")
+    @GET(VERSION + "/bag")
     Call<SumResponse<Bag>> getBags(@QueryMap Map<String, String> params);
 
-    @POST("api-v2/bag")
+    @POST(VERSION + "/bag")
     Call<Bag> createBag(@Body Bag bag);
 
-    @GET("api-v2/bag/{uuid}")
+    @GET(VERSION + "/bag/{uuid}")
     Call<Bag> getBag(@Path("uuid") String uuid);
 
-    @PUT("api-v2/bag/{uuid}")
+    @PUT(VERSION + "/bag/{uuid}")
     Call<Bag> updateBag(@Path("uuid") String uuid, @Body Bag bag);
 
-    @GET("api-v2/bag/{uuid}/digest")
+    @GET(VERSION + "/bag/{uuid}/digest")
     Call<Response<Digest>> getDigests(@QueryMap Map<String, String> params);
 
-    @POST("api-v2/bag/{uuid}/digest")
+    @POST(VERSION + "/bag/{uuid}/digest")
     Call<Digest> createDigest(@Path("uuid") String uuid, @Body Digest digest);
 
-    @GET("api-v2/bag/{uuid}/digest/{algorithm}")
+    @GET(VERSION + "/bag/{uuid}/digest/{algorithm}")
     Call<Digest> getDigest(@Path("uuid") String uuid, @Path("algorithm") String algorithm);
 
 }
