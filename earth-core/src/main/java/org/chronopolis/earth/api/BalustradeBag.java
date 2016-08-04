@@ -3,6 +3,7 @@ package org.chronopolis.earth.api;
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Digest;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.models.SumResponse;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -24,7 +25,7 @@ import java.util.Map;
 public interface BalustradeBag {
 
     @GET("api-v1/bag")
-    Call<Response<Bag>> getBags(@QueryMap Map<String, String> params);
+    Call<SumResponse<Bag>> getBags(@QueryMap Map<String, String> params);
 
     @POST("api-v1/bag")
     Call<Bag> createBag(@Body Bag bag);
