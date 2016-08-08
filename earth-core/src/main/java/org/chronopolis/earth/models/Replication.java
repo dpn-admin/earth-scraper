@@ -18,15 +18,14 @@ public class Replication {
     String fixityAlgorithm;
     String fixityNonce;
     String fixityValue;
-    Boolean fixityAccept;
     String protocol;
     String link;
     ZonedDateTime createdAt;
     ZonedDateTime updatedAt;
-
-    // Might be deprecated soon
-    Boolean bagValid;
-    Status status;
+    Boolean storeRequested;
+    Boolean stored;
+    Boolean cancelled;
+    String cancelReason;
 
     public Replication() {
     }
@@ -64,33 +63,6 @@ public class Replication {
 
     public Replication setProtocol(String protocol) {
         this.protocol = protocol;
-        return this;
-    }
-
-    public Status status() {
-        return status;
-    }
-
-    public Replication setStatus(Status status) {
-        this.status = status;
-        return this;
-    }
-
-    public Boolean isBagValid() {
-        return bagValid != null && bagValid;
-    }
-
-    public Replication setBagValid(Boolean bagValid) {
-        this.bagValid = bagValid;
-        return this;
-    }
-
-    public Boolean isFixityAccept() {
-        return fixityAccept != null && fixityAccept;
-    }
-
-    public Replication setFixityAccept(Boolean fixityAccept) {
-        this.fixityAccept = fixityAccept;
         return this;
     }
 
@@ -157,43 +129,40 @@ public class Replication {
         return this;
     }
 
+    public Boolean getStoreRequested() {
+        return storeRequested;
+    }
 
-    public enum Status {
-        REQUESTED("requested"),
-        REJECTED("rejected"),
-        RECEIVED("received"),
-        CONFIRMED("confirmed"),
-        STORED("stored"),
-        CANCELLED("cancelled"),
-        UNKNOWN("unknown");
+    public Replication setStoreRequested(Boolean storeRequested) {
+        this.storeRequested = storeRequested;
+        return this;
+    }
 
-        private final String name;
+    public Boolean getStored() {
+        return stored;
+    }
 
-        Status(String name) {
-            this.name = name;
-        }
+    public Replication setStored(Boolean stored) {
+        this.stored = stored;
+        return this;
+    }
 
-        public static Status fromString(String status) {
-            if (status.equalsIgnoreCase("Requested")) {
-                return REQUESTED;
-            } else if (status.equalsIgnoreCase("Rejected")) {
-                return REJECTED;
-            } else if (status.equalsIgnoreCase("Received")) {
-                return RECEIVED;
-            } else if (status.equalsIgnoreCase("Confirmed")) {
-                return CONFIRMED;
-            } else if (status.equalsIgnoreCase("Stored")) {
-                return STORED;
-            } else if (status.equalsIgnoreCase("Cancelled")) {
-                return CANCELLED;
-            }
+    public Boolean getCancelled() {
+        return cancelled;
+    }
 
-            return UNKNOWN;
-        }
+    public Replication setCancelled(Boolean cancelled) {
+        this.cancelled = cancelled;
+        return this;
+    }
 
-        public String getName() {
-            return name;
-        }
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public Replication setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
+        return this;
     }
 
 }

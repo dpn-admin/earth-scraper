@@ -1,23 +1,27 @@
 package org.chronopolis.earth.models;
 
-import org.joda.time.DateTime;
+import java.time.ZonedDateTime;
 
 /**
  * Restore request from the DPN API
  *
  * Created by shake on 3/27/15.
  */
+@SuppressWarnings("WeakerAccess")
 public class Restore {
 
     String restoreId;
     String fromNode;
     String toNode;
-    String uuid;
+    String bag;
     String protocol;
     String link;
-    Status status;
-    DateTime createdAt;
-    DateTime updatedAt;
+    ZonedDateTime createdAt;
+    ZonedDateTime updatedAt;
+    Boolean accepted;
+    Boolean finished;
+    Boolean cancelled;
+    String cancelReason;
 
     public Restore() {
     }
@@ -49,12 +53,12 @@ public class Restore {
         return this;
     }
 
-    public String getUuid() {
-        return uuid;
+    public String getBag() {
+        return bag;
     }
 
-    public Restore setUuid(String uuid) {
-        this.uuid = uuid;
+    public Restore setBag(String bag) {
+        this.bag = bag;
         return this;
     }
 
@@ -76,30 +80,57 @@ public class Restore {
         return this;
     }
 
-    public Status getStatus() {
-        return status;
-    }
-
-    public Restore setStatus(Status status) {
-        this.status = status;
-        return this;
-    }
-
-    public DateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public Restore setCreatedAt(DateTime createdAt) {
+    public Restore setCreatedAt(ZonedDateTime createdAt) {
         this.createdAt = createdAt;
         return this;
     }
 
-    public DateTime getUpdatedAt() {
+    public ZonedDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public Restore setUpdatedAt(DateTime updatedAt) {
+    public Restore setUpdatedAt(ZonedDateTime updatedAt) {
         this.updatedAt = updatedAt;
+        return this;
+    }
+
+    public Boolean getAccepted() {
+        return accepted;
+    }
+
+    public Restore setAccepted(Boolean accepted) {
+        this.accepted = accepted;
+        return this;
+    }
+
+    public Boolean getFinished() {
+        return finished;
+    }
+
+    public Restore setFinished(Boolean finished) {
+        this.finished = finished;
+        return this;
+    }
+
+    public Boolean getCancelled() {
+        return cancelled;
+    }
+
+    public Restore setCancelled(Boolean cancelled) {
+        this.cancelled = cancelled;
+        return this;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public Restore setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
         return this;
     }
 
