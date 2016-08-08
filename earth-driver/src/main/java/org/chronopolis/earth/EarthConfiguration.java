@@ -19,17 +19,11 @@ import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.config.Dpn;
 import org.chronopolis.earth.config.Endpoint;
 import org.chronopolis.earth.config.Ingest;
-import org.chronopolis.earth.models.Replication;
-import org.chronopolis.earth.serializers.DateTimeDeserializer;
-import org.chronopolis.earth.serializers.DateTimeSerializer;
-import org.chronopolis.earth.serializers.ReplicationStatusDeserializer;
-import org.chronopolis.earth.serializers.ReplicationStatusSerializer;
 import org.chronopolis.rest.api.IngestAPI;
 import org.chronopolis.rest.entities.Bag;
 import org.chronopolis.rest.support.PageDeserializer;
 import org.chronopolis.rest.support.ZonedDateTimeDeserializer;
 import org.chronopolis.rest.support.ZonedDateTimeSerializer;
-import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
@@ -82,15 +76,18 @@ public class EarthConfiguration {
     }
 
     @Bean
+    EventAPIs eventAPIs() {
+        return new EventAPIs();
+    }
+
+    @Bean
     Gson gson() {
         return new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-                .registerTypeAdapter(DateTime.class, new DateTimeSerializer())
-                .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
+                // .registerTypeAdapter(DateTime.class, new DateTimeSerializer())
+                // .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
                 .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer())
                 .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeDeserializer())
-                .registerTypeAdapter(Replication.Status.class, new ReplicationStatusSerializer())
-                .registerTypeAdapter(Replication.Status.class, new ReplicationStatusDeserializer())
                 .serializeNulls()
                 .create();
     }
@@ -185,10 +182,8 @@ public class EarthConfiguration {
     IngestAPI ingestAPI() {
         Ingest api = settings.getIngest();
 
-        Type bagPage = new TypeToken<PageImpl<Bag>>() {
-        }.getType();
-        Type bagList = new TypeToken<List<Bag>>() {
-        }.getType();
+        Type bagPage = new TypeToken<PageImpl<Bag>>() {}.getType();
+        Type bagList = new TypeToken<List<Bag>>() {}.getType();
 
         Gson gson = new GsonBuilder()
                 .registerTypeAdapter(bagPage, new PageDeserializer(bagList))
