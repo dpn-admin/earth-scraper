@@ -129,7 +129,7 @@ public class Replication {
         return this;
     }
 
-    public Boolean getStoreRequested() {
+    public Boolean isStoreRequested() {
         return storeRequested;
     }
 
@@ -138,7 +138,7 @@ public class Replication {
         return this;
     }
 
-    public Boolean getStored() {
+    public Boolean isStored() {
         return stored;
     }
 
@@ -147,7 +147,7 @@ public class Replication {
         return this;
     }
 
-    public Boolean getCancelled() {
+    public Boolean isCancelled() {
         return cancelled;
     }
 

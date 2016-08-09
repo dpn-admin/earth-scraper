@@ -98,7 +98,7 @@ public class Restore {
         return this;
     }
 
-    public Boolean getAccepted() {
+    public Boolean isAccepted() {
         return accepted;
     }
 
@@ -107,7 +107,7 @@ public class Restore {
         return this;
     }
 
-    public Boolean getFinished() {
+    public Boolean isFinished() {
         return finished;
     }
 
@@ -116,7 +116,7 @@ public class Restore {
         return this;
     }
 
-    public Boolean getCancelled() {
+    public Boolean isCancelled() {
         return cancelled;
     }
 
