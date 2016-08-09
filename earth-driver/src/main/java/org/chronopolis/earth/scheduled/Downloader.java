@@ -15,6 +15,7 @@ import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.config.Ingest;
+import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.rest.api.IngestAPI;
@@ -28,6 +29,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.sql2o.Connection;
+import org.sql2o.Sql2o;
 import retrofit2.Call;
 
 import java.io.BufferedReader;
@@ -50,8 +53,8 @@ import java.util.Optional;
 /**
  * TODO: Find a better way to query each api/grab replication transfers
  * The current has mucho code duplication
- *
- *
+ * <p>
+ * <p>
  * Created by shake on 3/31/15.
  */
 @Component
@@ -69,6 +72,9 @@ public class Downloader {
 
     @Autowired
     EarthSettings settings;
+
+    @Autowired
+    Sql2o sql2o;
 
     /*
     public Downloader(EarthSettings settings, IngestAPI chronopolis, TransferAPIs apis) {
@@ -108,22 +114,30 @@ public class Downloader {
 
     // Scheduled tasks. Delegate to functions based on what state the replication is in
 
+    /**
+     * The beginning of a replication sequence. Here we have store_requested = false and
+     * need to do one of two tasks: rsync or untar. When we extract the tarball, we
+     * calculate the fixity value and update the replication.
+     * <p>
+     * TODO: How do we know if the rsync exited successfully? We can't get this information
+     * from the server anymore. Perhaps it needs to be added in.
+     * sqlite db - hold rsync values and stats
+     */
     @Scheduled(cron = "${earth.cron.replicate:0 * * * * *}")
     private void requested() {
         int page;
         int pageSize = 10;
-        Replication.Status status = Replication.Status.REQUESTED;
 
         Response<Replication> transfers;
         Map<String, String> params = Maps.newHashMap();
-        params.put("status", status.getName());
+        params.put("store_requested", String.valueOf(false));
         params.put("page_size", String.valueOf(pageSize));
 
         for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
             page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
-            log.info("[{}] Getting {} replications", node, status.getName());
+            // log.info("[{}] Getting {} replications", node, status.getName());
             do {
                 params.put("from_node", node);
                 params.put("page", String.valueOf(page));
@@ -131,9 +145,14 @@ public class Downloader {
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getBag();
+                    ReplicationFlow flow = get(transfer.getReplicationId());
 
                     try {
-                        download(api, transfer);
+                        if (flow.isReceived()) {
+                            download(api, transfer, flow);
+                        } else {
+                            update(api, transfer);
+                        }
                     } catch (InterruptedException | IOException e) {
                         log.error("[{}] Error downloading {}, skipping", from, uuid, e);
                     }
@@ -146,47 +165,56 @@ public class Downloader {
 
     }
 
+    /**
+     * The middle/end of the replication. At this point we have a valid fixity, but still
+     * need to validate the bag. If a bag is not valid, we cancel it, else we push it in
+     * to chronopolis. Once a bag has been replicated in chronopolis we set stored to true
+     * and update the replication.
+     * <p>
+     * TODO: How do we stop ourselves from validating a bag multiple times? It's not
+     * necessary and once again is something we lost from the server.
+     * sqlite db - hold untar status
+     * sqlite db - hold validation status
+     */
     @Scheduled(cron = "${earth.cron.replicate:0 * * * * *}")
     private void received() {
         int page;
         int pageSize = 10;
-        Replication.Status status = Replication.Status.RECEIVED;
 
         Response<Replication> transfers;
         Map<String, String> params = Maps.newHashMap();
-        params.put("status", status.getName());
+        params.put("store_requested", String.valueOf(true));
         params.put("page_size", String.valueOf(pageSize));
 
         for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
             page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
-            log.info("[{}] Getting {} replications", node, status.getName());
+            // log.info("[{}] Getting {} replications", node, status.getName());
             do {
                 params.put("from_node", node);
                 params.put("page", String.valueOf(page));
                 transfers = getTransfers(api, params);
+
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getBag();
-                    // transfer.setBagValid(null);
+                    ReplicationFlow flow = get(transfer.getReplicationId());
 
                     try {
-                        // update the tag manifest fixity
-                        // if tag is valid, untar and validate
-                        // else reject
-                        update(api, transfer);
-                        if (transfer.isFixityAccept()) {
-                            untar(transfer);
-                            validate(api, transfer);
-                        } else {
-                            if (transfer.status() != Replication.Status.CANCELLED) {
-                                transfer.setStatus(Replication.Status.CANCELLED);
-                            }
 
-                            SimpleCallback<Replication> callback = new SimpleCallback<>();
-                            Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
-                            call.enqueue(callback);
+                        // If we haven't yet extracted, do so
+                        // else validate
+                        // else push to chronopolis
+                        // else check if we should store
+                        if (!flow.isExtracted()) {
+                            untar(transfer, flow);
+                        } else if (flow.isExtracted()) {
+                            validate(api, transfer, flow);
+                        } else if (flow.isValidated()) {
+                            push(transfer, flow);
+                        } else {
+                            store(api, transfer);
                         }
                     } catch (IOException e) {
                         log.error("[{}] Error untarring {}, skipping", from, uuid, e);
@@ -199,87 +227,51 @@ public class Downloader {
         }
     }
 
-    @Scheduled(cron = "${earth.cron.replicate:0 * * * * *}")
-    private void confirmed() {
-        int page;
-        int pageSize = 10;
-        Replication.Status status = Replication.Status.CONFIRMED;
-
-        Response<Replication> transfers;
-        Map<String, String> params = Maps.newHashMap();
-        params.put("status", status.getName());
-        params.put("page_size", String.valueOf(pageSize));
-        params.put("order_by", "updated_on");
-
-        for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
-            page = 1;
-            String node = entry.getKey();
-            BalustradeTransfers api = entry.getValue();
-            log.info("[{}] Getting {} replications", node, status.getName());
-
-            do {
-                params.put("from_node", node);
-                params.put("page", String.valueOf(page));
-                transfers = getTransfers(api, params);
-                for (Replication transfer : transfers.getResults()) {
-                    // TODO: Exit when we get past a certain update time
-                    if (transfer.status() == Replication.Status.STORED) {
-                        continue;
-                    }
-
-                    // String from = transfer.getFromNode();
-                    String uuid = transfer.getBag();
-
-                    Map<String, Object> chronParams = Maps.newHashMap();
-                    chronParams.put("name", uuid);
-
-                    // TODO: Query parameters for bag
-                    // Since bags are named by uuids, this should be unique
-                    // but it's still a list so we get that and check if it's empty
-                    List<Bag> bags;
-                    Call<PageImpl<Bag>> bagCall = chronopolis.getBags(chronParams);
-                    try {
-                        bags = bagCall.execute() // execute the http request
-                                .body()          // get the response body
-                                .getContent();   // get the content of the response
-                    } catch (IOException e) {
-                        log.error("Error getting list of bags from a DPN Registry", e);
-                        bags = new ArrayList<>();
-                    }
-
-
-                    if (!bags.isEmpty()) {
-                        Bag b = bags.get(0);
-                        log.info("Bag found in chronopolis, status is {}", b.getStatus());
-                        if (b.getStatus() == BagStatus.PRESERVED) {
-                            store(api, transfer);
-                        }
-                    } else {
-                        log.info("Bag not found in chronopolis, validating and pushing");
-                        push(transfer);
-                    }
-                }
-
-                ++page;
-            } while (transfers.getNext() != null);
-        }
-    }
-
     // Operations
 
     /**
      * Update a replication to note completion of ingestion into chronopolis
      *
-     * @param api The transfer API to use
+     * @param api      The transfer API to use
      * @param transfer The replication transfer to update
      */
     public void store(BalustradeTransfers api, Replication transfer) {
-        SimpleCallback<Replication> callback = new SimpleCallback<>();
-        transfer.setStatus(Replication.Status.STORED);
-        transfer.setUpdatedAt(ZonedDateTime.now());
-        Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
-        call.enqueue(callback);
+        // First check if we have the bag stored in chronopolis
+        // String from = transfer.getFromNode();
+        String uuid = transfer.getBag();
+
+        Map<String, Object> chronParams = Maps.newHashMap();
+        chronParams.put("name", uuid);
+
+        // TODO: Query parameters for bag
+        // Since bags are named by uuids, this should be unique
+        // but it's still a list so we get that and check if it's empty
+        List<Bag> bags;
+        Call<PageImpl<Bag>> bagCall = chronopolis.getBags(chronParams);
+        try {
+            bags = bagCall.execute() // execute the http request
+                    .body()          // get the response body
+                    .getContent();   // get the content of the response
+        } catch (IOException e) {
+            log.error("Error getting list of bags from a DPN Registry", e);
+            bags = new ArrayList<>();
+        }
+
+        // Then update  dpn if we're ready
+        // TODO: Rework this a little bit so it's a little cleaner
+        if (!bags.isEmpty()) {
+            Bag b = bags.get(0);
+            log.info("Bag found in chronopolis, status is {}", b.getStatus());
+            if (b.getStatus() == BagStatus.PRESERVED) {
+                SimpleCallback<Replication> callback = new SimpleCallback<>();
+                transfer.setStored(true);
+                transfer.setUpdatedAt(ZonedDateTime.now());
+                Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
+                call.enqueue(callback);
+            }
+        }
     }
+
 
 
     /**
@@ -287,26 +279,29 @@ public class Downloader {
      * in to Chronopolis
      *
      * @param transfer The replication transfer being ingested into Chronopolis
+     * @param flow     The flow object corresponding to the replication
      */
-    public void push(Replication transfer) {
-        if (transfer.isFixityAccept() && transfer.isBagValid()) {
-            log.info("Bag is valid, pushing to chronopolis");
-            Ingest ingest = settings.getIngest();
+    public void push(Replication transfer, ReplicationFlow flow) {
+        log.info("Bag is valid, pushing to chronopolis");
+        Ingest ingest = settings.getIngest();
 
-            // push to chronopolis
-            IngestRequest request = new IngestRequest();
-            request.setDepositor(transfer.getFromNode());
-            request.setName(transfer.getBag());
-            request.setLocation(transfer.getFromNode() + "/" + transfer.getBag());
-            request.setRequiredReplications(1);
-            request.setReplicatingNodes(ImmutableList.of(ingest.getNode()));
+        // push to chronopolis
+        IngestRequest request = new IngestRequest();
+        request.setDepositor(transfer.getFromNode());
+        request.setName(transfer.getBag());
+        request.setLocation(transfer.getFromNode() + "/" + transfer.getBag());
+        request.setRequiredReplications(1);
+        request.setReplicatingNodes(ImmutableList.of(ingest.getNode()));
 
-            // We don't really need to check the result of this unless it fails,
-            // which shouldn't matter as the state simply won't update
-            Call<Bag> call = chronopolis.stageBag(request);
-            call.enqueue(new SimpleCallback<>());
+        // We only need to check for the presence of the response, which should
+        // indicate a successful http call
+        SimpleCallback<Bag> cb = new SimpleCallback<>();
+        Call<Bag> call = chronopolis.stageBag(request);
+        call.enqueue(cb);
+
+        if (cb.getResponse().isPresent()) {
+            flow.setPushed(true, sql2o);
         }
-
     }
 
     /**
@@ -318,14 +313,9 @@ public class Downloader {
      *
      * @param api      dpn api to update the replication request
      * @param transfer the replication request from the dpn api
+     * @param flow     the flow object corresponding to the replication
      */
-    public void validate(BalustradeTransfers api, Replication transfer) {
-        if (!transfer.isFixityAccept()) {
-            log.info("Fixity not accepted, setting bag as false");
-            transfer.setBagValid(false);
-            return;
-        }
-
+    public void validate(BalustradeTransfers api, Replication transfer, ReplicationFlow flow) {
         boolean valid;
         String uuid = transfer.getBag();
         String stage = settings.getStage();
@@ -345,12 +335,16 @@ public class Downloader {
         }
 
         log.info("Bag {} is valid: {}", uuid, valid);
-        transfer.setBagValid(valid);
-
-        SimpleCallback<Replication> callback = new SimpleCallback<>();
-        transfer.setUpdatedAt(ZonedDateTime.now());
-        Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
-        call.enqueue(callback);
+        if (valid) {
+            flow.setValidated(true, sql2o);
+        } else {
+            transfer.setCancelled(true);
+            transfer.setCancelReason("Bag is invalid");
+            transfer.setUpdatedAt(ZonedDateTime.now());
+            SimpleCallback<Replication> callback = new SimpleCallback<>();
+            Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
+            call.enqueue(callback);
+        }
     }
 
     /**
@@ -402,9 +396,10 @@ public class Downloader {
      * /staging/area/from_node/bag_uuid
      *
      * @param transfer The replication transfer to download
+     * @param flow     The flow object corresponding to the replication
      * @throws InterruptedException
      */
-    public void download(BalustradeTransfers api, Replication transfer) throws InterruptedException, IOException {
+    public void download(BalustradeTransfers api, Replication transfer, ReplicationFlow flow) throws InterruptedException, IOException {
         String stage = settings.getStage();
         String uuid = transfer.getBag();
         String from = transfer.getFromNode();
@@ -439,12 +434,7 @@ public class Downloader {
                 log.error(error);
             } else {
                 log.info("rsync successful, updating replication transfer");
-
-                SimpleCallback<Replication> callback = new SimpleCallback<>();
-                transfer.setStatus(Replication.Status.RECEIVED);
-                transfer.setUpdatedAt(ZonedDateTime.now());
-                Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
-                call.enqueue(callback);
+                flow.setReceived(true, sql2o);
             }
 
             log.debug("Rsync stats:\n {}", stats);
@@ -478,7 +468,6 @@ public class Downloader {
      */
     public void update(BalustradeTransfers balustrade, Replication transfer) {
         // Get the files digest
-        HashFunction func = Hashing.sha256();
         String stage = settings.getStage();
         Path tarball = Paths.get(stage,
                 transfer.getFromNode(),
@@ -505,30 +494,30 @@ public class Downloader {
             return;
         }
 
-        // Set the receipt or mark as invalid if no receipt could be made
-        String receipt = hash != null ? hash.toString() : "invalid-bag";
-        transfer.setFixityValue(receipt);
+        if (hash == null) { /* Cancel */
+            transfer.setCancelled(true);
+            transfer.setCancelReason("Unable to create fixity");
+        } else {            /* Update fixity */
+            String receipt = hash.toString();
+            transfer.setFixityValue(receipt);
+        }
 
-        // Do the update
+        // Do the update. We don't need the response as the transfer
+        // will be continued the next time we query
         SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setUpdatedAt(ZonedDateTime.now());
         Call<Replication> call = balustrade.updateReplication(transfer.getReplicationId(), transfer);
         call.enqueue(callback);
-        Optional<Replication> response = callback.getResponse();
-
-        if (response.isPresent()) {
-            Replication update = response.get();
-            transfer.setFixityAccept(update.isFixityAccept());
-        }
     }
 
     /**
      * Explode a tarball for a given transfer
      *
      * @param transfer The replication transfer to untar
+     * @param flow     The flow object corresponding to the replication
      */
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public void untar(Replication transfer) throws IOException {
+    public void untar(Replication transfer, ReplicationFlow flow) throws IOException {
         String stage = settings.getStage();
         Path tarball = Paths.get(stage, transfer.getFromNode(), transfer.getBag() + ".tar");
 
@@ -541,7 +530,6 @@ public class Downloader {
 
         // Get our root path (just the staging area), and create an updated bag path
         Path root = Paths.get(stage, depositor);
-        // Path bag = root.resolve(entry.getName());
 
         while (entry != null) {
             Path entryPath = root.resolve(entry.getName());
@@ -568,6 +556,30 @@ public class Downloader {
 
             entry = tais.getNextTarEntry();
         }
+
+        flow.setExtracted(true, sql2o);
     }
+
+    // DB Ops
+
+    private ReplicationFlow get(String replicationId) {
+        String sql = "SELECT replication_id, received, extracted, validated, pushed " +
+                "FROM replication_flows " +
+                "WHERE replication_id = :replicationId";
+
+        try (Connection conn = sql2o.open()) {
+            ReplicationFlow flow = conn.createQuery(sql)
+                    .addParameter("replicationId", replicationId)
+                    .addColumnMapping("REPLICATION_ID", "replicationId")
+                    .executeAndFetchFirst(ReplicationFlow.class);
+
+            if (flow == null) {
+                flow = new ReplicationFlow();
+            }
+
+            return flow;
+        }
+    }
+
 
 }
