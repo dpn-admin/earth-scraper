@@ -4,6 +4,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.zaxxer.hikari.HikariDataSource;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okio.Buffer;
@@ -32,9 +33,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.PageImpl;
+import org.sql2o.Sql2o;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
 
+import javax.sql.DataSource;
 import java.lang.reflect.Type;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -221,6 +224,20 @@ public class EarthConfiguration {
                 .build();
 
         return adapter.create(IngestAPI.class);
+    }
+
+    @Bean
+    DataSource dataSource() {
+        HikariDataSource ds = new HikariDataSource();
+        ds.setDataSourceClassName("org.sqlite.SQLiteDataSource");
+        ds.setUsername("intake");
+        ds.setPassword("intake");
+        return null;
+    }
+
+    @Bean
+    Sql2o sql2o(DataSource dataSource) {
+        return new Sql2o(dataSource);
     }
 
 }
