@@ -8,6 +8,7 @@ import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
@@ -21,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.sql2o.Sql2o;
 import retrofit2.Call;
 
 import java.io.BufferedReader;
@@ -53,6 +55,9 @@ public class CLIService implements DpnService {
 
     @Autowired
     NodeAPIs nodeAPIs;
+
+    @Autowired
+    Sql2o sql2o;
 
     @Autowired
     ApplicationContext context;
@@ -112,17 +117,18 @@ public class CLIService implements DpnService {
         }
 
         try {
-            dl.download(api, replication);
+            ReplicationFlow flow = ReplicationFlow.get(replication.getReplicationId(), sql2o);
+            dl.download(api, replication, flow);
             System.out.println("Downloaded. Waiting on input to continue.");
             readLine();
             dl.update(api, replication);
             System.out.println("Updated. Waiting on input to continue.");
             readLine();
-            dl.untar(replication);
-            dl.validate(api, replication);
+            dl.untar(replication, flow);
+            dl.validate(api, replication, flow);
             System.out.println("Validated. Waiting on input to continue.");
             readLine();
-            dl.push(replication);
+            dl.push(replication, flow);
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();
         }
@@ -204,7 +210,7 @@ public class CLIService implements DpnService {
             Response<Replication> replications = response.get();
             log.info("Showing {} out of {} total", replications.getResults().size(), replications.getCount());
             for (Replication replication : replications.getResults()) {
-                log.info("[{}] {}", replication.status(), replication.getReplicationId());
+                // log.info("[{}] {}", replication.status(), replication.getReplicationId());
             }
         }
     }
