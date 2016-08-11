@@ -14,15 +14,15 @@ import org.sql2o.Sql2o;
  */
 public class ReplicationFlow {
 
-    private final Logger log = LoggerFactory.getLogger(ReplicationFlow.class);
-    private final String update = "UPDATE replication_flow SET %s = %s WHERE replication_id = :replication_id";
+    private static final Logger log = LoggerFactory.getLogger(ReplicationFlow.class);
+    private final String update = "UPDATE replication_flow SET pushed = :pushed, received = :received, extracted = :extracted, validated = :validated WHERE replication_id = :replicationId";
 
     private String replicationId;
 
-    private Boolean pushed;
-    private Boolean received;
-    private Boolean extracted;
-    private Boolean validated;
+    private boolean pushed;
+    private boolean received;
+    private boolean extracted;
+    private boolean validated;
 
     public ReplicationFlow() {
         pushed = false;
@@ -36,77 +36,88 @@ public class ReplicationFlow {
     }
 
     public ReplicationFlow setReplicationId(String replicationId) {
+        log.info("Setting replication id {}", replicationId);
         this.replicationId = replicationId;
         return this;
     }
 
-    public Boolean isPushed() {
+    public boolean isPushed() {
         return pushed;
     }
 
-    public ReplicationFlow setPushed(Boolean pushed) {
+    public ReplicationFlow setPushed(boolean pushed) {
+        log.info("Setting pushed {}", pushed);
         this.pushed = pushed;
         return this;
     }
 
-    public Boolean isReceived() {
+    public boolean isReceived() {
         return received;
     }
 
-    public ReplicationFlow setReceived(Boolean received) {
+    public ReplicationFlow setReceived(boolean received) {
+        log.info("Setting received {}", received);
         this.received = received;
         return this;
     }
 
-    public Boolean isExtracted() {
+    public boolean isExtracted() {
         return extracted;
     }
 
-    public ReplicationFlow setExtracted(Boolean extracted) {
+    public ReplicationFlow setExtracted(boolean extracted) {
+        log.info("Setting extracted {}", extracted);
         this.extracted = extracted;
         return this;
     }
 
-    public Boolean isValidated() {
+    public boolean isValidated() {
         return validated;
     }
 
-    public ReplicationFlow setValidated(Boolean validated) {
+    public ReplicationFlow setValidated(boolean validated) {
+        log.info("Setting validated {}", validated);
         this.validated = validated;
         return this;
     }
 
     // DB Ops
 
-    public void setPushed(boolean pushed, Sql2o sql2o) {
-        this.pushed = pushed;
-        update("pushed", String.valueOf(pushed), sql2o);
-    }
-
-    public void setReceived(boolean received, Sql2o sql2o) {
-        this.received = received;
-        update("received", String.valueOf(received), sql2o);
-    }
-
-    public void setExtracted(boolean extracted, Sql2o sql2o) {
-        this.extracted = extracted;
-        update("extracted", String.valueOf(extracted), sql2o);
-    }
-
-    public void setValidated(boolean validated, Sql2o sql2o) {
-        this.validated = validated;
-        update("validated", String.valueOf(validated), sql2o);
-    }
-
-    private void update(String col, String val, Sql2o sql2o) {
-        String query = String.format(update, col, ":" + col);
-        log.debug(query);
-
+    public void save(Sql2o sql2o) {
         try (Connection conn = sql2o.open()) {
-            conn.createQuery(query)
-                    .addParameter(col, val)
+            conn.createQuery(update)
+                    .addParameter("pushed", pushed)
+                    .addParameter("received", received)
+                    .addParameter("extracted", extracted)
+                    .addParameter("validated", validated)
                     .addParameter("replicationId", replicationId)
                     .executeUpdate();
+        }
+    }
+
+    public static ReplicationFlow get(String replicationId, Sql2o sql2o) {
+        String sql = "SELECT replication_id, received, extracted, validated, pushed " +
+                "FROM replication_flow " +
+                "WHERE replication_id = :replicationId";
+
+        try (Connection conn = sql2o.open()) {
+            ReplicationFlow flow = conn.createQuery(sql)
+                    .addParameter("replicationId", replicationId)
+                    .addColumnMapping("REPLICATION_ID", "replicationId")
+                    .executeAndFetchFirst(ReplicationFlow.class);
+
+            if (flow == null) {
+                log.info("Creating new flow for {}", replicationId);
+                flow = new ReplicationFlow();
+                flow.setReplicationId(replicationId);
+
+                conn.createQuery("INSERT INTO replication_flow(replication_id, received, extracted, validated, pushed) " +
+                        "VALUES (:replicationId, :received, :extracted, :validated, :pushed)")
+                        .bind(flow)
+                        .executeUpdate();
+            }
+
+            return flow;
         }
     }
 }
