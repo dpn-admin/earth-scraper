@@ -29,7 +29,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.sql2o.Connection;
 import org.sql2o.Sql2o;
 import retrofit2.Call;
 
@@ -53,6 +52,8 @@ import java.util.Optional;
 /**
  * TODO: Find a better way to query each api/grab replication transfers
  * The current has mucho code duplication
+ *
+ * TODO: We can add some bookkeeping/stats via ReplicationFlow (maybe RsyncStats/TarStats/HttpStats)
  * <p>
  * <p>
  * Created by shake on 3/31/15.
@@ -64,25 +65,18 @@ public class Downloader {
     private static final String TAG_MANIFEST = "tagmanifest-sha256.txt";
     private static final String MANIFEST = "manifest-sha256.txt";
 
-    @Autowired
+    Sql2o sql2o;
     TransferAPIs apis;
-
-    @Autowired
     IngestAPI chronopolis;
-
-    @Autowired
     EarthSettings settings;
 
     @Autowired
-    Sql2o sql2o;
-
-    /*
-    public Downloader(EarthSettings settings, IngestAPI chronopolis, TransferAPIs apis) {
+    public Downloader(EarthSettings settings, IngestAPI chronopolis, TransferAPIs apis, Sql2o sql2o) {
         this.apis = apis;
         this.chronopolis = chronopolis;
         this.settings = settings;
+        this.sql2o = sql2o;
     }
-    */
 
     private Response<Replication> getTransfers(BalustradeTransfers balustrade,
                                                Map<String, String> params) {
@@ -118,13 +112,9 @@ public class Downloader {
      * The beginning of a replication sequence. Here we have store_requested = false and
      * need to do one of two tasks: rsync or untar. When we extract the tarball, we
      * calculate the fixity value and update the replication.
-     * <p>
-     * TODO: How do we know if the rsync exited successfully? We can't get this information
-     * from the server anymore. Perhaps it needs to be added in.
-     * sqlite db - hold rsync values and stats
      */
     @Scheduled(cron = "${earth.cron.replicate:0 * * * * *}")
-    private void requested() {
+    protected void requested() {
         int page;
         int pageSize = 10;
 
@@ -145,13 +135,14 @@ public class Downloader {
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getBag();
-                    ReplicationFlow flow = get(transfer.getReplicationId());
+                    ReplicationFlow flow = ReplicationFlow.get(transfer.getReplicationId(), sql2o);
 
                     try {
                         if (flow.isReceived()) {
-                            download(api, transfer, flow);
-                        } else {
+                            log.info("Updating replication {}", transfer.getReplicationId());
                             update(api, transfer);
+                        } else {
+                            download(api, transfer, flow);
                         }
                     } catch (InterruptedException | IOException e) {
                         log.error("[{}] Error downloading {}, skipping", from, uuid, e);
@@ -171,13 +162,9 @@ public class Downloader {
      * to chronopolis. Once a bag has been replicated in chronopolis we set stored to true
      * and update the replication.
      * <p>
-     * TODO: How do we stop ourselves from validating a bag multiple times? It's not
-     * necessary and once again is something we lost from the server.
-     * sqlite db - hold untar status
-     * sqlite db - hold validation status
      */
     @Scheduled(cron = "${earth.cron.replicate:0 * * * * *}")
-    private void received() {
+    protected void received() {
         int page;
         int pageSize = 10;
 
@@ -199,7 +186,7 @@ public class Downloader {
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getBag();
-                    ReplicationFlow flow = get(transfer.getReplicationId());
+                    ReplicationFlow flow = ReplicationFlow.get(transfer.getReplicationId(), sql2o);
 
                     try {
 
@@ -207,14 +194,15 @@ public class Downloader {
                         // else validate
                         // else push to chronopolis
                         // else check if we should store
-                        if (!flow.isExtracted()) {
-                            untar(transfer, flow);
+                        // todo: see if there's a way to cut down on this
+                        if (flow.isPushed() && flow.isValidated() && flow.isExtracted()) {
+                            store(api, transfer);
+                        } else if (flow.isValidated() && flow.isExtracted()) {
+                            push(transfer, flow);
                         } else if (flow.isExtracted()) {
                             validate(api, transfer, flow);
-                        } else if (flow.isValidated()) {
-                            push(transfer, flow);
                         } else {
-                            store(api, transfer);
+                            untar(transfer, flow);
                         }
                     } catch (IOException e) {
                         log.error("[{}] Error untarring {}, skipping", from, uuid, e);
@@ -300,7 +288,8 @@ public class Downloader {
         call.enqueue(cb);
 
         if (cb.getResponse().isPresent()) {
-            flow.setPushed(true, sql2o);
+            flow.setPushed(true);
+            flow.save(sql2o);
         }
     }
 
@@ -336,7 +325,8 @@ public class Downloader {
 
         log.info("Bag {} is valid: {}", uuid, valid);
         if (valid) {
-            flow.setValidated(true, sql2o);
+            flow.setValidated(true);
+            flow.save(sql2o);
         } else {
             transfer.setCancelled(true);
             transfer.setCancelReason("Bag is invalid");
@@ -434,7 +424,8 @@ public class Downloader {
                 log.error(error);
             } else {
                 log.info("rsync successful, updating replication transfer");
-                flow.setReceived(true, sql2o);
+                flow.setReceived(true);
+                flow.save(sql2o);
             }
 
             log.debug("Rsync stats:\n {}", stats);
@@ -472,6 +463,7 @@ public class Downloader {
         Path tarball = Paths.get(stage,
                 transfer.getFromNode(),
                 transfer.getBag() + ".tar");
+        log.info("{}", tarball);
         HashCode hash = null;
         try {
             TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball));
@@ -495,10 +487,12 @@ public class Downloader {
         }
 
         if (hash == null) { /* Cancel */
+            log.info("Cancelling transfer");
             transfer.setCancelled(true);
             transfer.setCancelReason("Unable to create fixity");
         } else {            /* Update fixity */
             String receipt = hash.toString();
+            log.info("Captured receipt {}", receipt);
             transfer.setFixityValue(receipt);
         }
 
@@ -557,29 +551,8 @@ public class Downloader {
             entry = tais.getNextTarEntry();
         }
 
-        flow.setExtracted(true, sql2o);
+        flow.setExtracted(true);
+        flow.save(sql2o);
     }
-
-    // DB Ops
-
-    private ReplicationFlow get(String replicationId) {
-        String sql = "SELECT replication_id, received, extracted, validated, pushed " +
-                "FROM replication_flows " +
-                "WHERE replication_id = :replicationId";
-
-        try (Connection conn = sql2o.open()) {
-            ReplicationFlow flow = conn.createQuery(sql)
-                    .addParameter("replicationId", replicationId)
-                    .addColumnMapping("REPLICATION_ID", "replicationId")
-                    .executeAndFetchFirst(ReplicationFlow.class);
-
-            if (flow == null) {
-                flow = new ReplicationFlow();
-            }
-
-            return flow;
-        }
-    }
-
 
 }
