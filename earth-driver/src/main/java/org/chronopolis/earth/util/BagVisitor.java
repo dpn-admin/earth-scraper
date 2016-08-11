@@ -116,9 +116,7 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
                 Replication replication = replications.getResults().get(0);
 
                 // Check the state of the replication
-                terminal = replication.status() == Replication.Status.STORED
-                        || replication.status() == Replication.Status.CANCELLED
-                        || replication.status() == Replication.Status.REJECTED;
+                terminal = replication.isStored() || replication.isCancelled();
             }
 
         } else {
