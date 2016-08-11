@@ -4,6 +4,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -33,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.PageImpl;
+import org.sql2o.Connection;
 import org.sql2o.Sql2o;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
@@ -228,16 +230,33 @@ public class EarthConfiguration {
 
     @Bean
     DataSource dataSource() {
-        HikariDataSource ds = new HikariDataSource();
-        ds.setDataSourceClassName("org.sqlite.SQLiteDataSource");
-        ds.setUsername("intake");
-        ds.setPassword("intake");
-        return null;
+        HikariConfig config = new HikariConfig();
+        config.setDataSourceClassName("org.sqlite.SQLiteDataSource");
+        // TODO: we can make this configurable
+        config.addDataSourceProperty("databaseName", "/tmp/intake.sqlite3");
+        return new HikariDataSource(config);
     }
 
     @Bean
     Sql2o sql2o(DataSource dataSource) {
-        return new Sql2o(dataSource);
+        Sql2o sql2o = new Sql2o(dataSource);
+        initTables(sql2o);
+        return sql2o;
+    }
+
+    private void initTables(Sql2o sql2o) {
+        try (Connection conn = sql2o.open()) {
+            createIfNotExists(conn, "replication_flow", "CREATE TABLE replication_flow(replication_id string PRIMARY KEY, pushed TINYINT, received TINYINT, extracted TINYINT, validated TINYINT)");
+        }
+    }
+
+    private void createIfNotExists(Connection conn, String table, String create) {
+        String select = "SELECT name FROM sqlite_master WHERE type='table' AND name = :name";
+        String name = conn.createQuery(select).addParameter("name", table).executeAndFetchFirst(String.class);
+        if (name == null) {
+            log.info("Creating table {}", table);
+            conn.createQuery(create).executeUpdate();
+        }
     }
 
 }
