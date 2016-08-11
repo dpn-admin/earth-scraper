@@ -45,14 +45,13 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         r.setToNode(node);
         r.setCreatedAt(ZonedDateTime.now());
         r.setUpdatedAt(ZonedDateTime.now());
-        r.setBagValid(true);
         r.setFixityNonce("");
-        r.setFixityAccept(true);
         r.setFixityAlgorithm("uuid");
         r.setFixityValue(uuid);
         r.setLink("link");
         r.setProtocol("rsync");
-        r.setStatus(Replication.Status.STORED);
+        r.setStored(true);
+        r.setStoreRequested(true);
         return r;
     }
 
