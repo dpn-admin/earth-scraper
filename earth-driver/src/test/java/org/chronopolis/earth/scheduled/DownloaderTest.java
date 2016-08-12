@@ -3,6 +3,7 @@ package org.chronopolis.earth.scheduled;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import okhttp3.MediaType;
+import okhttp3.Request;
 import okhttp3.ResponseBody;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
@@ -130,7 +131,7 @@ public class DownloaderTest {
 
         @Override
         public void enqueue(Callback<T> callback) {
-            callback.onResponse(retrofit2.Response.success(t));
+            callback.onResponse(this, retrofit2.Response.success(t));
         }
 
         @Override
@@ -152,6 +153,11 @@ public class DownloaderTest {
         public Call<T> clone() {
             return null;
         }
+
+        @Override
+        public Request request() {
+            return null;
+        }
     }
 
     class FailedCall<T> extends SuccessfulCall<T> {
@@ -169,7 +175,7 @@ public class DownloaderTest {
 
         @Override
         public void enqueue(Callback<T> callback) {
-            callback.onResponse(response);
+            callback.onResponse(this, response);
         }
     }
 
@@ -188,7 +194,7 @@ public class DownloaderTest {
 
         @Override
         public void enqueue(Callback<T> callback) {
-            callback.onResponse(response);
+            callback.onResponse(this, response);
         }
     }
 }
