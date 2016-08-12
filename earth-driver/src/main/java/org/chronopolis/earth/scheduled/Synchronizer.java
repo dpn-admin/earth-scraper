@@ -5,7 +5,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
@@ -13,10 +12,15 @@ import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.LocalAPI;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.domain.HttpDetail;
+import org.chronopolis.earth.domain.SyncStatus;
+import org.chronopolis.earth.domain.SyncType;
+import org.chronopolis.earth.domain.SyncView;
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.util.DetailEmitter;
 import org.chronopolis.earth.util.LastSync;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
@@ -27,6 +31,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.sql2o.Sql2o;
 import retrofit2.Call;
 
 import javax.annotation.Nullable;
@@ -44,36 +49,37 @@ import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
 /**
- * TODO: Make sure we only sync items which the remote node is the admin node of
- * TODO: DateTime -> LocalDate
- * <p>
- * <p>
+ * Functions to synchronize registry data
+ *
  * Created by shake on 3/31/15.
  */
 @Component
 @Profile("sync")
 @EnableScheduling
+@SuppressWarnings("WeakerAccess")
 public class Synchronizer {
 
     private static final Logger log = LoggerFactory.getLogger(Synchronizer.class);
 
-    @Autowired
-    DateTimeFormatter formatter;
-
-    @Autowired
-    BagAPIs bagAPIs;
-
-    @Autowired
-    TransferAPIs transferAPIs;
-
-    @Autowired
-    NodeAPIs nodeAPIs;
-
-    @Autowired
-    LocalAPI localAPI;
+    final Sql2o sql2o;
+    final BagAPIs bagAPIs;
+    final NodeAPIs nodeAPIs;
+    final LocalAPI localAPI;
+    final TransferAPIs transferAPIs;
+    final DateTimeFormatter formatter;
 
     LastSync lastSync;
     ListeningExecutorService service;
+
+    @Autowired
+    public Synchronizer(DateTimeFormatter formatter, Sql2o sql2o, BagAPIs bagAPIs, TransferAPIs transferAPIs, NodeAPIs nodeAPIs, LocalAPI localAPI) {
+        this.sql2o = sql2o;
+        this.bagAPIs = bagAPIs;
+        this.nodeAPIs = nodeAPIs;
+        this.localAPI = localAPI;
+        this.formatter = formatter;
+        this.transferAPIs = transferAPIs;
+    }
 
     @Scheduled(cron = "${earth.cron.sync:0 0 0 * * *}")
     public void synchronize() {
@@ -106,6 +112,7 @@ public class Synchronizer {
 
     void syncTransfers() {
         BalustradeTransfers local = localAPI.getTransfersAPI();
+        List<SyncView> views = new ArrayList<>();
 
         for (String node : transferAPIs.getApiMap().keySet()) {
             DateTime now = DateTime.now();
@@ -118,12 +125,18 @@ public class Synchronizer {
 
             log.info("[{}]: Syncing replications", node);
 
-            PageIterable<Replication> it = new PageIterable<>(params, remote::getReplications);
+            SyncView view = new SyncView();
+            view.setHost(node);
+            view.setType(SyncType.REPL);
+            view.setStatus(SyncStatus.SUCCESS);
+
+            PageIterable<Replication> it = new PageIterable<>(params, remote::getReplications, view);
             // We may be able to use a partially applied function here (and below), but it's not too big of a deal
             boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(f -> f.map(r -> syncLocal(local::getReplication, local::createReplication, local::updateReplication, r, r.getReplicationId())))
+                    .map(o -> o.map(r -> syncLocal(local::getReplication, local::createReplication, local::updateReplication, r, r.getReplicationId(), view)))
                     .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
 
+            views.add(view);
             if (!failure) {
                 log.info("Adding last sync to replication for {}", node);
                 lastSync.addLastReplication(node, now);
@@ -131,11 +144,14 @@ public class Synchronizer {
                 log.warn("Not updating last sync to replication for {}", node);
             }
         }
+
+        views.forEach(v -> v.insert(sql2o));
     }
 
     void syncBags() {
         BalustradeBag local = localAPI.getBagAPI();
         Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
+        List<SyncView> views = new ArrayList<>();
         for (String node : apis.keySet()) {
             DateTime now = DateTime.now();
             String after = lastSync.lastBagSync(node);
@@ -147,11 +163,18 @@ public class Synchronizer {
 
             log.info("[{}]: Syncing bags", node);
 
-            PageIterable<Bag> it = new PageIterable<>(params, remote::getBags);
+            SyncView view = new SyncView();
+            view.setHost(node);
+            view.setType(SyncType.BAG);
+            view.setStatus(SyncStatus.SUCCESS);
+
+            PageIterable<Bag> it = new PageIterable<>(params, remote::getBags, view);
             boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(f -> f.map(b -> syncLocal(local::getBag, local::createBag, local::updateBag, b, b.getUuid())))
+                    .map(f -> f.map(b -> syncLocal(local::getBag, local::createBag, local::updateBag, b, b.getUuid(), view)))
                     .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
 
+            // view.insert(sql2o);
+            views.add(view);
             if (!failure) {
                 log.info("Adding last sync to bags for {}", node);
                 lastSync.addLastBagSync(node, now);
@@ -159,6 +182,8 @@ public class Synchronizer {
                 log.warn("Not updating last sync to bags for {}", node);
             }
         }
+
+        views.forEach(v -> v.insert(sql2o));
     }
 
     // We'll probably want to split these out in to their own classes, but for now this is fine
@@ -167,15 +192,17 @@ public class Synchronizer {
 
         final Map<String, String> params;
         final Function<Map<String, String>, Call<? extends Response<T>>> get;
+        private final SyncView view;
 
-        public PageIterable(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get) {
+        public PageIterable(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get, SyncView view) {
             this.get = get;
             this.params = params;
+            this.view = view;
         }
 
         @Override
         public Iterator<Optional<T>> iterator() {
-            return new PageIterator<>(params, get);
+            return new PageIterator<>(params, get, view);
         }
 
     }
@@ -184,6 +211,7 @@ public class Synchronizer {
     class PageIterator<T> implements Iterator<Optional<T>> {
 
         final int pageSize = 25;
+        private final SyncView view;
 
         int page;
         int count;
@@ -191,9 +219,10 @@ public class Synchronizer {
         Map<String, String> params;
         Function<Map<String, String>, Call<? extends Response<T>>> get;
 
-        public PageIterator(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get) {
+        public PageIterator(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get, SyncView view) {
             this.page = 1;
             this.get = get;
+            this.view = view;
             this.params = params;
             this.results = new ArrayList<>();
             this.params.put("page", String.valueOf(page));
@@ -215,19 +244,29 @@ public class Synchronizer {
         }
 
         private void populate() {
+            // Because of the weird typing we'll handle this here for now
+            // instead of in DetailEmitter
+            String body = "";
+            HttpDetail detail = new HttpDetail();
+
             // On the first run this *should* have page = 1
             // Then we increment for successive runs
             // When we fail, add a null object which serves as a "poison pill"
             // log.info("{}", params);
             Call<? extends Response<T>> apply = get.apply(params);
+            if (apply.request() != null) {
+                detail.setUrl(apply.request().url().toString());
+            }
             try {
                 retrofit2.Response<? extends Response<T>> response = apply.execute();
-                if (response.isSuccess()) {
+                detail.setResponseCode(response.code());
+                if (response.isSuccessful()) {
                     count = response.body().getCount();
                     results.addAll(response.body().getResults());
                 } else {
                     count = -1;
                     results.add(null);
+                    body = response.errorBody().toString();
                 }
 
                 // Increment our page and update our params
@@ -237,7 +276,15 @@ public class Synchronizer {
                 log.warn("Error communicating with remote server");
                 count = -1;
                 results.add(null);
+                body = e.getMessage();
+
+                // introspection for our view
+                // view.addDetail(e.getMessage());
+                view.setStatus(SyncStatus.FAIL_REMOTE);
             }
+
+            detail.setResponseBody(body);
+            view.addHttpDetail(detail);
         }
 
         @Override
@@ -267,31 +314,31 @@ public class Synchronizer {
      * @param <U> An identifier for T
      * @return the result of the synchronization
      */
-    static<T, U> boolean syncLocal(Function<U, Call<T>> get, Function<T, Call<T>> create, BiFunction<U, T, Call<T>> update, T argT, U argU) {
+    static<T, U> boolean syncLocal(Function<U, Call<T>> get, Function<T, Call<T>> create, BiFunction<U, T, Call<T>> update, T argT, U argU, SyncView view) {
         Call<T> sync;
         boolean success = true;
-        SimpleCallback<T> getCB = new SimpleCallback<T>();
+        DetailEmitter<T> getCB = new DetailEmitter<>();
+        DetailEmitter<T> syncCB = new DetailEmitter<>();
+
+        // Perform our get to see if we need to create or update
         Call<T> getCall = get.apply(argU);
         getCall.enqueue(getCB);
         Optional<T> response = getCB.getResponse();
-
+        view.addHttpDetail(getCB.emit());
         if (response.isPresent()) {
             sync = update.apply(argU, argT);
         } else {
             sync = create.apply(argT);
         }
 
-        try {
-            retrofit2.Response<T> execute = sync.execute();
-            if (execute.isSuccess()) {
-                log.info("Successfully ran sync");
-            } else {
-                success = false;
-                log.warn("Unable to perform sync: {}", execute.errorBody().string());
-            }
-        } catch (IOException e) {
+        // Perform our 'sync' call
+        sync.enqueue(syncCB);
+        response = syncCB.getResponse();
+        view.addHttpDetail(syncCB.emit());
+        if (!response.isPresent()) {
+            log.warn("Unable to perform sync {}:{}", view.getHost(), view.getType());
+            view.setStatus(SyncStatus.FAIL_LOCAL);
             success = false;
-            log.error("Error in sync call", e);
         }
 
         return success;
@@ -309,7 +356,7 @@ public class Synchronizer {
             ListenableFuture<Node> submit = service.submit(() -> {
                 Call<Node> call = api.getNode(node);
                 retrofit2.Response<Node> response = call.execute();
-                if (response.isSuccess()) {
+                if (response.isSuccessful()) {
                     return response.body();
                 }
 
