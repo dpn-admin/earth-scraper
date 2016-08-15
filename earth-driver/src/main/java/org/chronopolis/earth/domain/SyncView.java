@@ -1,5 +1,7 @@
 package org.chronopolis.earth.domain;
 
+import org.chronopolis.earth.domain.handler.SyncViewListHandler;
+import org.chronopolis.earth.domain.handler.SyncViewSingleHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sql2o.Connection;
@@ -105,12 +107,12 @@ public class SyncView {
      * @return the SyncView found
      */
     public static SyncView get(Long id, Sql2o sql2o) {
-        String select = "SELECT * FROM sync_view INNER JOIN http_detail ON sync_view.sync_id = http_detail.sync WHERE sync_view.sync_id = :sync_id";
+        String select = "SELECT * FROM sync_view INNER JOIN http_detail ON sync_view.sync_id = http_detail.sync WHERE sync_view.sync_id = :syncId";
 
         try (Connection conn = sql2o.open()) {
             return conn.createQuery(select)
-                    .addParameter("synId", id)
-                    .executeAndFetchFirst(new SyncViewHandler());
+                    .addParameter("syncId", id)
+                    .executeAndFetchFirst(new SyncViewSingleHandler());
         }
     }
 
