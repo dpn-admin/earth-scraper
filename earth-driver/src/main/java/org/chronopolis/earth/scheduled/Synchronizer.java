@@ -256,6 +256,7 @@ public class Synchronizer {
             Call<? extends Response<T>> apply = get.apply(params);
             if (apply.request() != null) {
                 detail.setUrl(apply.request().url().toString());
+                detail.setRequestMethod(apply.request().method());
             }
             try {
                 retrofit2.Response<? extends Response<T>> response = apply.execute();

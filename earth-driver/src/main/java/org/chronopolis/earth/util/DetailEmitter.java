@@ -64,6 +64,7 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
         HttpDetail detail = new HttpDetail();
         if (rawRequest != null) {
             detail.setUrl(rawRequest.url().toString());
+            detail.setRequestMethod(rawRequest.method());
             if (rawRequest.body() != null) {
                 Buffer b = new Buffer();
                 try {
