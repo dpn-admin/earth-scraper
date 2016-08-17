@@ -9,6 +9,8 @@ import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.EventAPIs;
+import org.chronopolis.earth.api.Events;
 import org.chronopolis.earth.api.LocalAPI;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
@@ -17,6 +19,9 @@ import org.chronopolis.earth.domain.SyncStatus;
 import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.domain.SyncView;
 import org.chronopolis.earth.models.Bag;
+import org.chronopolis.earth.models.Digest;
+import org.chronopolis.earth.models.FixityCheck;
+import org.chronopolis.earth.models.Ingest;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
@@ -50,6 +55,8 @@ import java.util.stream.StreamSupport;
 
 /**
  * Functions to synchronize registry data
+ * TODO: We still have a lot of boilerplate, maybe we can cut down on it somehow
+ * TODO: ZonedDateTime
  *
  * Created by shake on 3/31/15.
  */
@@ -65,6 +72,7 @@ public class Synchronizer {
     final BagAPIs bagAPIs;
     final NodeAPIs nodeAPIs;
     final LocalAPI localAPI;
+    final EventAPIs eventAPIs;
     final TransferAPIs transferAPIs;
     final DateTimeFormatter formatter;
 
@@ -72,11 +80,12 @@ public class Synchronizer {
     ListeningExecutorService service;
 
     @Autowired
-    public Synchronizer(DateTimeFormatter formatter, Sql2o sql2o, BagAPIs bagAPIs, TransferAPIs transferAPIs, NodeAPIs nodeAPIs, LocalAPI localAPI) {
+    public Synchronizer(DateTimeFormatter formatter, Sql2o sql2o, BagAPIs bagAPIs, TransferAPIs transferAPIs, NodeAPIs nodeAPIs, LocalAPI localAPI, EventAPIs eventAPIs) {
         this.sql2o = sql2o;
         this.bagAPIs = bagAPIs;
         this.nodeAPIs = nodeAPIs;
         this.localAPI = localAPI;
+        this.eventAPIs = eventAPIs;
         this.formatter = formatter;
         this.transferAPIs = transferAPIs;
     }
@@ -88,8 +97,127 @@ public class Synchronizer {
         syncNode();
         syncBags();
         syncTransfers();
+        // events
+        syncIngests();
+        syncFixities();
+        syncDigests();
         service.shutdown(); // shutdown the pool
         writeLastSync(lastSync);
+    }
+
+    private void syncDigests() {
+        List<SyncView> views = new ArrayList<>();
+        Events local = localAPI.getEventsAPI();
+
+        for (String node : eventAPIs.getApiMap().keySet()) {
+            DateTime now = DateTime.now();
+            String after = lastSync.lastDigestSync(node);
+            Events remote = eventAPIs.getApiMap().get(node);
+            BalustradeBag bag = bagAPIs.getApiMap().get(node);
+
+            Map<String, String> params = new HashMap<>();
+            params.put("node", node);
+            params.put("after", after);
+
+            log.info("[{}]: Sync digests", node);
+
+            SyncView view = new SyncView();
+            view.setHost(node);
+            view.setType(SyncType.DIGEST);
+            view.setStatus(SyncStatus.SUCCESS);
+
+            PageIterable<Digest> it = new PageIterable<>(params, remote::getDigests, view);
+            // TODO: Maybe something for read-only models
+            // TODO: LastSync
+            boolean failure = StreamSupport.stream(it.spliterator(), false)
+                    .map(o -> o.map(d -> syncImmutable(bag::createDigest, d, view))
+                    .anyMatch(p -> !p.isPresent() || !p.get());
+
+            views.add(view);
+            if (!failure) {
+                // log.info("Yadda yadda digest {}", node) ;
+                lastSync.addLastDigest(node, now);
+            } else {
+                log.warn("Not updating last sync to digest for {}", node);
+            }
+        }
+
+        views.forEach(v -> v.insert(sql2o));
+    }
+
+    private void syncFixities() {
+        List<SyncView> views = new ArrayList<>();
+        Events local = localAPI.getEventsAPI();
+
+        for (String node : eventAPIs.getApiMap().keySet()) {
+            DateTime now = DateTime.now();
+            String after = lastSync.lastFixitySync(node);
+            Events remote = eventAPIs.getApiMap().get(node);
+
+            Map<String, String> params = new HashMap<>();
+            params.put("node", node);
+            params.put("after", after);
+
+            log.info("[{}]: Sync fixities", node);
+
+            SyncView view = new SyncView();
+            view.setHost(node);
+            view.setType(SyncType.FIXITY);
+            view.setStatus(SyncStatus.SUCCESS);
+
+            PageIterable<FixityCheck> it = new PageIterable<>(params, remote::getFixityChecks, view);
+
+            // TODO: lastSync
+            boolean failure = StreamSupport.stream(it.spliterator(), false)
+                    .map(o -> o.map(f -> syncImmutable(local::createFixityCheck, f, view))
+                    .anyMatch(p -> !p.isPresent() || !p.get());
+
+            views.add(view);
+            if (!failure) {
+                lastSync.addLastFixity(node, now); 
+            } else {
+                log.warn("Not updating last sync to digest for {}", node);
+            }
+        }
+        views.forEach(v -> v.insert(sql2o));
+    }
+
+    private void syncIngests() {
+        List<SyncView> views = new ArrayList<>();
+        Events local = localAPI.getEventsAPI();
+
+        for (String node : eventAPIs.getApiMap().keySet()) {
+            DateTime now = DateTime.now();
+            String after = lastSync.lastDigestSync(node);
+            Events remote = eventAPIs.getApiMap().get(node);
+
+            Map<String, String> params = new HashMap<>();
+            params.put("node", node);
+            params.put("after", after);
+
+            log.info("[{}]: Sync ingests", node);
+
+            SyncView view = new SyncView();
+            view.setHost(node);
+            view.setType(SyncType.INGEST);
+            view.setStatus(SyncStatus.SUCCESS);
+
+            PageIterable<Ingest> it = new PageIterable<>(params, remote::getIngests, view);
+
+            // TODO: lastSync
+            boolean failure = StreamSupport.stream(it.spliterator(), false)
+                    .map(o -> o.map(i -> syncImmutable(local::createIngest, i, view))
+                    .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
+
+            views.add(view);
+            if (!failure) {
+                lastSync.addLastIngest(node, now);
+            } else {
+                log.warn("Not updating last sync to digest for {}", node);
+            }
+        }
+
+        views.forEach(v -> v.insert(sql2o));
     }
 
     void readLastSync() {
@@ -103,7 +231,7 @@ public class Synchronizer {
 
     private void writeLastSync(LastSync sync) {
         try {
-            log.info("Writing last sync");
+            log.debug("Writing last sync");
             sync.write();
         } catch (IOException e) {
             log.error("Unable to write last sync!", e);
@@ -138,7 +266,7 @@ public class Synchronizer {
 
             views.add(view);
             if (!failure) {
-                log.info("Adding last sync to replication for {}", node);
+                // log.info("Adding last sync to replication for {}", node);
                 lastSync.addLastReplication(node, now);
             } else {
                 log.warn("Not updating last sync to replication for {}", node);
@@ -176,7 +304,7 @@ public class Synchronizer {
             // view.insert(sql2o);
             views.add(view);
             if (!failure) {
-                log.info("Adding last sync to bags for {}", node);
+                // log.info("Adding last sync to bags for {}", node);
                 lastSync.addLastBagSync(node, now);
             } else {
                 log.warn("Not updating last sync to bags for {}", node);
@@ -299,6 +427,28 @@ public class Synchronizer {
                 action.accept(next());
             }
         }
+    }
+
+
+    /**
+     * A sync function for models which are only created and never updated
+     *
+     * @param create Function to create T in the registry
+     * @param argT The T to sync
+     * @param view The sync view we record with
+     * @param <T> The type of the registry model to create
+     */
+    static<T> boolean syncImmutable(Function<T, Call<T>> create, T argT, SyncView view) {
+        boolean success = true;
+        DetailEmitter<Ingest> emitter = new DetailEmitter<>();
+        Call<Ingest> fixity = local.createIngest(i);
+        fixity.enqueue(emitter);
+        view.addHttpDetail(emitter.emit());
+        if (!emitter.getResponse().isPresent()) {
+            success = false;
+            view.setStatus(SyncStatus.FAIL_LOCAL);
+        }
+        return success;
     }
 
     /**
