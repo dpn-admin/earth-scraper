@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * TODO: Move to sqlitedb
  *
  * Created by shake on 2/22/16.
  */
@@ -54,6 +55,25 @@ public class LastSync {
         syncs.put(node, sync);
     }
 
+    public void addLastDigest(String node, DateTime date) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        sync.digest = formatter.print(date);
+        syncs.put(node, sync);
+    }
+
+    public void addLastFixity(String node, DateTime date) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        sync.fixity = formatter.print(date);
+        syncs.put(node, sync);
+    }
+
+    public void addLastIngest(String node, DateTime date) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        sync.ingest = formatter.print(date);
+        syncs.put(node, sync);
+    }
+
+
     public String lastBagSync(String node) {
         NodeSync sync = syncs.getOrDefault(node, new NodeSync());
         return sync.bag;
@@ -67,6 +87,21 @@ public class LastSync {
     public String lastNodeSync(String node) {
         NodeSync sync = syncs.getOrDefault(node, new NodeSync());
         return sync.node;
+    }
+
+    public String lastDigestSync(String node) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        return sync.digest;
+    }
+
+    public String lastFixitySync(String node) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        return sync.fixity;
+    }
+
+    public String lastIngestSync(String node) {
+        NodeSync sync = syncs.getOrDefault(node, new NodeSync());
+        return sync.ingest;
     }
 
     public void write() throws IOException {
@@ -110,6 +145,9 @@ public class LastSync {
     protected class NodeSync {
         String bag = epoch;
         String node = epoch;
+        String digest = epoch;
+        String fixity = epoch;
+        String ingest = epoch;
         String replication = epoch;
 
         @Override
@@ -148,6 +186,17 @@ public class LastSync {
             return node;
         }
 
+        public String getDigest() {
+            return digest; 
+        }
+
+        public String getFixity() {
+            return fixity; 
+        }
+
+        public String getIngest() {
+            return ingest;
+        }
     }
 
 }
