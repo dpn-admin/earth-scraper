@@ -127,19 +127,30 @@ public class Synchronizer {
             view.setStatus(SyncStatus.SUCCESS);
 
             PageIterable<Digest> it = new PageIterable<>(params, remote::getDigests, view);
-            // TODO: Maybe something for read-only models
-            // TODO: LastSync
-            boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(o -> o.map(d -> syncImmutable(bag::createDigest, d, view))
+            // Here we actually need a BiFunction for the create, so just do it in the map
+            StreamSupport.stream(it.spliterator(), false)
+                    .map(o -> o.map(d -> {
+                        DetailEmitter<Digest> emitter = new DetailEmitter<>();
+                        Call<Digest> create = bag.createDigest(d.getBag(), d);
+                        create.enqueue(emitter);
+                        view.addHttpDetail(emitter.emit());
+                        if (!emitter.getResponse().isPresent()) {
+                            view.setStatus(SyncStatus.FAIL_LOCAL);
+                        }
+
+                        return emitter.getResponse().isPresent();
+                    }))
                     .anyMatch(p -> !p.isPresent() || !p.get());
 
             views.add(view);
+            /*
             if (!failure) {
                 // log.info("Yadda yadda digest {}", node) ;
                 lastSync.addLastDigest(node, now);
             } else {
                 log.warn("Not updating last sync to digest for {}", node);
             }
+            */
         }
 
         views.forEach(v -> v.insert(sql2o));
@@ -169,7 +180,7 @@ public class Synchronizer {
 
             // TODO: lastSync
             boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(o -> o.map(f -> syncImmutable(local::createFixityCheck, f, view))
+                    .map(o -> o.map(f -> syncImmutable(local::createFixityCheck, f, view)))
                     .anyMatch(p -> !p.isPresent() || !p.get());
 
             views.add(view);
@@ -206,7 +217,7 @@ public class Synchronizer {
 
             // TODO: lastSync
             boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(o -> o.map(i -> syncImmutable(local::createIngest, i, view))
+                    .map(o -> o.map(i -> syncImmutable(local::createIngest, i, view)))
                     .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
 
             views.add(view);
@@ -440,9 +451,9 @@ public class Synchronizer {
      */
     static<T> boolean syncImmutable(Function<T, Call<T>> create, T argT, SyncView view) {
         boolean success = true;
-        DetailEmitter<Ingest> emitter = new DetailEmitter<>();
-        Call<Ingest> fixity = local.createIngest(i);
-        fixity.enqueue(emitter);
+        DetailEmitter<T> emitter = new DetailEmitter<>();
+        Call<T> call = create.apply(argT);
+        call.enqueue(emitter);
         view.addHttpDetail(emitter.emit());
         if (!emitter.getResponse().isPresent()) {
             success = false;
