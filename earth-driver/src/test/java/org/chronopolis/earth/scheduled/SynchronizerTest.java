@@ -10,6 +10,8 @@ import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
+import org.chronopolis.earth.api.EventAPIs;
+import org.chronopolis.earth.api.Events;
 import org.chronopolis.earth.api.LocalAPI;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
@@ -58,6 +60,9 @@ public class SynchronizerTest {
     @Mock BalustradeNode localNode;
     @Mock BalustradeNode remoteNode;
 
+    @Mock Events localEvents;
+    @Mock Events remoteEvents;
+
     Synchronizer synchronizer;
 
     @BeforeClass
@@ -99,6 +104,7 @@ public class SynchronizerTest {
         localAPI.setBagAPI(localBag);
         localAPI.setNodeAPI(localNode);
         localAPI.setTransfersAPI(localTransfer);
+        localAPI.setEventsAPI(localEvents);
         DateTimeFormatter fmt = ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
         BagAPIs bagAPIs = new BagAPIs();
         bagAPIs.put(node, remoteBag);
@@ -106,8 +112,10 @@ public class SynchronizerTest {
         nodeAPIs.put(node, remoteNode);
         TransferAPIs transferAPIs = new TransferAPIs();
         transferAPIs.put(node, remoteTransfer);
+        EventAPIs eventAPIs = new EventAPIs();
+        eventAPIs.put(node, remoteEvents);
 
-        synchronizer = new Synchronizer(fmt, sql2o, bagAPIs, transferAPIs, nodeAPIs, localAPI);
+        synchronizer = new Synchronizer(fmt, sql2o, bagAPIs, transferAPIs, nodeAPIs, localAPI, eventAPIs);
     }
 
     static <T> Response<T> responseWrapper(T t) {

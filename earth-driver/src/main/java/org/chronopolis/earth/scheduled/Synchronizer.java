@@ -105,15 +105,14 @@ public class Synchronizer {
         writeLastSync(lastSync);
     }
 
-    private void syncDigests() {
+    void syncDigests() {
         List<SyncView> views = new ArrayList<>();
-        Events local = localAPI.getEventsAPI();
+        BalustradeBag local = localAPI.getBagAPI();
 
         for (String node : eventAPIs.getApiMap().keySet()) {
             DateTime now = DateTime.now();
             String after = lastSync.lastDigestSync(node);
             Events remote = eventAPIs.getApiMap().get(node);
-            BalustradeBag bag = bagAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
             params.put("node", node);
@@ -128,10 +127,10 @@ public class Synchronizer {
 
             PageIterable<Digest> it = new PageIterable<>(params, remote::getDigests, view);
             // Here we actually need a BiFunction for the create, so just do it in the map
-            StreamSupport.stream(it.spliterator(), false)
+            boolean failure = StreamSupport.stream(it.spliterator(), false)
                     .map(o -> o.map(d -> {
                         DetailEmitter<Digest> emitter = new DetailEmitter<>();
-                        Call<Digest> create = bag.createDigest(d.getBag(), d);
+                        Call<Digest> create = local.createDigest(d.getBag(), d);
                         create.enqueue(emitter);
                         view.addHttpDetail(emitter.emit());
                         if (!emitter.getResponse().isPresent()) {
@@ -143,20 +142,18 @@ public class Synchronizer {
                     .anyMatch(p -> !p.isPresent() || !p.get());
 
             views.add(view);
-            /*
             if (!failure) {
                 // log.info("Yadda yadda digest {}", node) ;
                 lastSync.addLastDigest(node, now);
             } else {
                 log.warn("Not updating last sync to digest for {}", node);
             }
-            */
         }
 
         views.forEach(v -> v.insert(sql2o));
     }
 
-    private void syncFixities() {
+    void syncFixities() {
         List<SyncView> views = new ArrayList<>();
         Events local = localAPI.getEventsAPI();
 
@@ -193,7 +190,7 @@ public class Synchronizer {
         views.forEach(v -> v.insert(sql2o));
     }
 
-    private void syncIngests() {
+    void syncIngests() {
         List<SyncView> views = new ArrayList<>();
         Events local = localAPI.getEventsAPI();
 
