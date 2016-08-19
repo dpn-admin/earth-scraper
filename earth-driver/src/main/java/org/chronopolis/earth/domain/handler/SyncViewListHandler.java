@@ -23,6 +23,7 @@ public class SyncViewListHandler extends SyncViewHandler implements ResultSetHan
             return ImmutableList.of();
         }
 
+        setupColumns(resultSet);
         ArrayList<SyncView> views = new ArrayList<>();
 
         SyncView view = new SyncView();
