@@ -367,8 +367,7 @@ public class Downloader {
         HashFunction func = Hashing.sha256();
         Charset cs = Charset.defaultCharset();
 
-        try {
-            BufferedReader br = java.nio.file.Files.newBufferedReader(manifest, cs);
+        try(BufferedReader br = java.nio.file.Files.newBufferedReader(manifest, cs)) {
             while ((line = br.readLine()) != null) {
                 String[] split = line.split("\\s+", 2);
                 if (split.length != 2) {
