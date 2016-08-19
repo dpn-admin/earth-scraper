@@ -484,8 +484,7 @@ public class Downloader {
                 transfer.getFromNode(),
                 transfer.getUuid() + ".tar");
         HashCode hash = null;
-        try {
-            TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball));
+        try (TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball))) {
             TarArchiveEntry entry;
             while ((entry = tais.getNextTarEntry()) != null) {
                 if (entry.getName().equals(transfer.getUuid() + "/" + TAG_MANIFEST)) {
@@ -496,7 +495,6 @@ public class Downloader {
                     tais.read(buf, 0, size);
                     hasher.putBytes(buf);
                     hash = hasher.hash();
-                    tais.close();
                     break;
                 }
             }
@@ -568,6 +566,8 @@ public class Downloader {
 
             entry = tais.getNextTarEntry();
         }
+
+        tais.close();
     }
 
 }
