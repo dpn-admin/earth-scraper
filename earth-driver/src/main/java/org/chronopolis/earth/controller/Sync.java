@@ -1,5 +1,6 @@
 package org.chronopolis.earth.controller;
 
+import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.domain.SyncView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -25,16 +26,27 @@ public class Sync {
         this.sql2o = sql2o;
     }
 
-    @RequestMapping(value = "/", method = RequestMethod.GET)
+    @RequestMapping(value = "/")
+    public String index() {
+        return "index";
+    }
+
+    @RequestMapping(value = "/replications")
+    public String getReplications(Model model) {
+        model.addAttribute("replications", ReplicationFlow.getAll(sql2o));
+        return "replicate/index";
+    }
+
+    @RequestMapping(value = "/syncs", method = RequestMethod.GET)
     public String getSyncs(Model model) {
         model.addAttribute("syncs", SyncView.getAll(sql2o));
-        return "index";
+        return "sync/index";
     }
 
     @RequestMapping(value = "/syncs/{id}", method = RequestMethod.GET)
     public String getSync(Model model, @PathVariable("id") Long id) {
         model.addAttribute("sync", SyncView.get(id, sql2o));
-        return "sync";
+        return "sync/sync";
     }
 
 }
