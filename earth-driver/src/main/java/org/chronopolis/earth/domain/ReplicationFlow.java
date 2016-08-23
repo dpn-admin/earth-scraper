@@ -38,7 +38,6 @@ public class ReplicationFlow {
     }
 
     public ReplicationFlow setReplicationId(String replicationId) {
-        log.info("Setting replication id {}", replicationId);
         this.replicationId = replicationId;
         return this;
     }
@@ -48,7 +47,6 @@ public class ReplicationFlow {
     }
 
     public ReplicationFlow setPushed(boolean pushed) {
-        log.info("Setting pushed {}", pushed);
         this.pushed = pushed;
         return this;
     }
@@ -58,7 +56,6 @@ public class ReplicationFlow {
     }
 
     public ReplicationFlow setReceived(boolean received) {
-        log.info("Setting received {}", received);
         this.received = received;
         return this;
     }
@@ -68,7 +65,6 @@ public class ReplicationFlow {
     }
 
     public ReplicationFlow setExtracted(boolean extracted) {
-        log.info("Setting extracted {}", extracted);
         this.extracted = extracted;
         return this;
     }
@@ -78,7 +74,6 @@ public class ReplicationFlow {
     }
 
     public ReplicationFlow setValidated(boolean validated) {
-        log.info("Setting validated {}", validated);
         this.validated = validated;
         return this;
     }
