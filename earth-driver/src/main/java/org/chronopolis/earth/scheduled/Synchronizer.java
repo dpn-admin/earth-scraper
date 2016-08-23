@@ -410,7 +410,7 @@ public class Synchronizer {
                 ++page;
                 params.put("page", String.valueOf(page));
             } catch (IOException e) {
-                log.warn("Error communicating with remote server");
+                log.warn("Error communicating with remote server", e);
                 count = -1;
                 results.add(null);
                 body = e.getMessage();
