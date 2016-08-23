@@ -10,26 +10,4 @@ html(lang="en")
             ul#nav-mobile.right.hide-on-med-and-down
               li: a(href="#") Home
               li: a(href="/syncs") Syncs
-            // li(href="/repls") Repls (Coming Soon)
-    div.container
-      div.row
-        h5 Recent Syncs
-        table.narrow.bordered.highlight
-          thead
-            tr
-              th(style="width: 1%") Status
-              th Host
-              th Type
-              th Details
-          tbody
-            each sync in syncs
-              tr
-                if sync.status == "SUCCESS"
-                  td.green.accent-2 #{sync.status}
-                else
-                  td.red #{sync.status}
-                td=sync.host
-                td=sync.type
-                td: a(href="syncs/" + sync.id) placeholder
-
-
+              li: a(href="/replications") Replications
