@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.sql2o.Connection;
 import org.sql2o.Sql2o;
 
+import java.util.List;
+
 /**
  * Keep track of what we have done for replications
  *
@@ -83,6 +85,11 @@ public class ReplicationFlow {
 
     // DB Ops
 
+    /**
+     * Save a ReplicationFlow object to the db
+     *
+     * @param sql2o the sql2o connection
+     */
     public void save(Sql2o sql2o) {
         try (Connection conn = sql2o.open()) {
             conn.createQuery(update)
@@ -95,6 +102,13 @@ public class ReplicationFlow {
         }
     }
 
+    /**
+     * Get or insert a replication flow for ${replicationId}
+     *
+     * @param replicationId the replicationId to get
+     * @param sql2o the sql2o connection
+     * @return the ReplicationFlow for replicationId
+     */
     public static ReplicationFlow get(String replicationId, Sql2o sql2o) {
         String sql = "SELECT replication_id, received, extracted, validated, pushed " +
                 "FROM replication_flow " +
@@ -118,6 +132,24 @@ public class ReplicationFlow {
             }
 
             return flow;
+        }
+    }
+
+    /**
+     * Get all ReplicationFlow objects in the DB
+     *
+     * TODO: We could probably wrap this some type of pagination object
+     *
+     * @param sql2o the sql2o connection
+     * @return A list of ReplicationFlow objects
+     */
+    public static List<ReplicationFlow> getAll(Sql2o sql2o) {
+        String select = "SELECT replication_id, received, extracted, validated, pushed " +
+                "FROM replication_flow ORDER BY rowid DESC";
+        try (Connection conn = sql2o.open()) {
+            return conn.createQuery(select)
+                    .addColumnMapping("REPLICATION_ID", "replicationId")
+                    .executeAndFetch(ReplicationFlow.class);
         }
     }
 }
