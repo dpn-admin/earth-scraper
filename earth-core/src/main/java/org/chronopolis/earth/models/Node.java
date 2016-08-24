@@ -1,7 +1,6 @@
 package org.chronopolis.earth.models;
 
-import org.joda.time.DateTime;
-
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -9,6 +8,7 @@ import java.util.List;
  *
  * Created by shake on 3/27/15.
  */
+@SuppressWarnings("WeakerAccess")
 public class Node {
 
     String name;
@@ -21,8 +21,8 @@ public class Node {
     List<String> restoreTo;
     List<String> protocols;
     List<String> fixityAlgorithms;
-    DateTime createdAt;
-    DateTime updatedAt;
+    ZonedDateTime createdAt;
+    ZonedDateTime updatedAt;
     Storage storage;
 
     public Node() {
@@ -118,20 +118,20 @@ public class Node {
         return this;
     }
 
-    public DateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public Node setCreatedAt(DateTime createdAt) {
+    public Node setCreatedAt(ZonedDateTime createdAt) {
         this.createdAt = createdAt;
         return this;
     }
 
-    public DateTime getUpdatedAt() {
+    public ZonedDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public Node setUpdatedAt(DateTime updatedAt) {
+    public Node setUpdatedAt(ZonedDateTime updatedAt) {
         this.updatedAt = updatedAt;
         return this;
     }
