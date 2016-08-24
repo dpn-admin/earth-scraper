@@ -89,7 +89,7 @@ public class SyncView {
     public void insert(Sql2o sql2o) {
         String insertView = "INSERT INTO sync_view(host, type, status) VALUES(:host, :type, :status)";
         try (Connection conn = sql2o.open()) {
-            log.debug("Creating sync view for {}:{}", host, type);
+            // log.debug("Creating sync view for {}:{}", host, type);
             Long key = conn.createQuery(insertView)
                     .addParameter("host", host)
                     .addParameter("type", type.toString())

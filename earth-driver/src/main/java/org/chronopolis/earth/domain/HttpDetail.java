@@ -80,7 +80,7 @@ public class HttpDetail {
     public void insert(String type, Long fk, Connection conn) {
         String insertDetail = String.format(HttpDetail.INSERT, type);
         // log.info("{}", insertDetail);
-        log.debug("Creating http detail for {} - {}", type, fk);
+        // log.debug("Creating http detail for {} - {}", type, fk);
         conn.createQuery(insertDetail)
                 .addParameter("url", url)
                 .addParameter("requestBody", requestBody)

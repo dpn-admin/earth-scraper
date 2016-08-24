@@ -118,7 +118,7 @@ public class Synchronizer {
             params.put("node", node);
             params.put("after", after);
 
-            log.info("[{}]: Sync digests", node);
+            log.info("[{}] syncing message_digests", node);
 
             SyncView view = new SyncView();
             view.setHost(node);
@@ -166,7 +166,7 @@ public class Synchronizer {
             params.put("node", node);
             params.put("after", after);
 
-            log.info("[{}]: Sync fixities", node);
+            log.info("[{}] syncing fixity_checks", node);
 
             SyncView view = new SyncView();
             view.setHost(node);
@@ -203,7 +203,7 @@ public class Synchronizer {
             params.put("node", node);
             params.put("after", after);
 
-            log.info("[{}]: Sync ingests", node);
+            log.info("[{}] syncing ingests", node);
 
             SyncView view = new SyncView();
             view.setHost(node);
@@ -259,7 +259,7 @@ public class Synchronizer {
             params.put("from_node", node);
             params.put("after", after);
 
-            log.info("[{}]: Syncing replications", node);
+            log.info("[{}] syncing replications", node);
 
             SyncView view = new SyncView();
             view.setHost(node);
@@ -297,7 +297,7 @@ public class Synchronizer {
             params.put("admin_node", node);
             params.put("after", after);
 
-            log.info("[{}]: Syncing bags", node);
+            log.info("[{}] syncing bags", node);
 
             SyncView view = new SyncView();
             view.setHost(node);
@@ -416,7 +416,7 @@ public class Synchronizer {
                 body = e.getMessage();
 
                 // introspection for our view
-                // view.addDetail(e.getMessage());
+                detail.setResponseBody(body);
                 view.setStatus(SyncStatus.FAIL_REMOTE);
             }
 

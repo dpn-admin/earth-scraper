@@ -7,8 +7,6 @@ import com.google.gson.reflect.TypeToken;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okio.Buffer;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
@@ -89,8 +87,6 @@ public class EarthConfiguration {
     Gson gson() {
         return new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-                // .registerTypeAdapter(DateTime.class, new DateTimeSerializer())
-                // .registerTypeAdapter(DateTime.class, new DateTimeDeserializer())
                 .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer())
                 .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeDeserializer())
                 .serializeNulls()
@@ -110,22 +106,23 @@ public class EarthConfiguration {
             log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
 
             OkHttpClient client = new OkHttpClient.Builder()
+                    /*
                     .addInterceptor(chain -> {
                         Request req = chain.request();
 
                         if (settings.logRemote()) {
-                            log.debug("[{}] {}", req.method(), req.url());
+                            // log.debug("[{}] {}", req.method(), req.url());
                             if (req.body() != null) {
                                 Buffer b = new Buffer();
                                 req.body().writeTo(b);
-                                log.debug("{}", b.readUtf8());
+                                // log.debug("{}", b.readUtf8());
                             } else {
-                                log.trace("Skipping trace of http call");
+                                // log.trace("Skipping trace of http call");
                             }
                         }
 
                         return chain.proceed(req);
-                    })
+                    })*/
                     .addInterceptor(new OkTokenInterceptor(endpoint.getAuthKey()))
                     .build();
 
@@ -153,20 +150,6 @@ public class EarthConfiguration {
         log.debug("Creating local adapter for root {}", local.getApiRoot());
 
         OkHttpClient client = new OkHttpClient.Builder()
-                .addInterceptor(chain -> {
-                    Request req = chain.request();
-
-                    if (settings.logLocal()) {
-                        log.debug("[{}] {}", req.method(), req.url());
-                        if (req.body() != null) {
-                            Buffer b = new Buffer();
-                            req.body().writeTo(b);
-                            log.debug("{}", b.readUtf8());
-                        }
-                    }
-
-                    return chain.proceed(req);
-                })
                 .addInterceptor(new OkTokenInterceptor(local.getAuthKey()))
                 .build();
 
@@ -198,20 +181,6 @@ public class EarthConfiguration {
 
         OkHttpClient client = new OkHttpClient.Builder()
                 .readTimeout(5, TimeUnit.HOURS)
-                .addInterceptor(chain -> {
-                    Request req = chain.request();
-
-                    if (settings.logChron()) {
-                        log.debug("[{}] {}", req.method(), req.url());
-                        if (req.body() != null) {
-                            Buffer b = new Buffer();
-                            req.body().writeTo(b);
-                            log.debug("{}", b.readUtf8());
-                        }
-                    }
-
-                    return chain.proceed(req);
-                })
                 .addInterceptor(new OkBasicInterceptor(
                         api.getUsername(),
                         api.getPassword()))
