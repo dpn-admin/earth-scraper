@@ -35,7 +35,7 @@ public class StoreTest extends DownloaderTest {
         b.setStatus(BagStatus.PRESERVED);
         String replicationId = "store-success";
         Replication r = createReplication(replicationId, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(replicationId, sql2o);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setExtracted(true);
         flow.setReceived(true);
         flow.setValidated(true);
@@ -61,7 +61,7 @@ public class StoreTest extends DownloaderTest {
 
         String replicationId = "store-fail-chron";
         Replication r = createReplication(replicationId, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(replicationId, sql2o);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setExtracted(true);
         flow.setReceived(true);
         flow.setValidated(true);
@@ -89,7 +89,7 @@ public class StoreTest extends DownloaderTest {
         b.setStatus(BagStatus.REPLICATING);
         String replicationId = "store-not-preserved";
         Replication r = createReplication(replicationId, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(replicationId, sql2o);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setExtracted(true);
         flow.setReceived(true);
         flow.setValidated(true);

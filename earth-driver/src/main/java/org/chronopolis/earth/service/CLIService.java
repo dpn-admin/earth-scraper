@@ -117,7 +117,7 @@ public class CLIService implements DpnService {
         }
 
         try {
-            ReplicationFlow flow = ReplicationFlow.get(replication.getReplicationId(), sql2o);
+            ReplicationFlow flow = ReplicationFlow.get(replication, sql2o);
             dl.download(api, replication, flow);
             System.out.println("Downloaded. Waiting on input to continue.");
             readLine();
@@ -144,6 +144,7 @@ public class CLIService implements DpnService {
             bean = context.getBean(Synchronizer.class);
             bean.synchronize();
         } catch (Exception e) {
+            log.error("", e);
             System.out.println("Synchronizer not found, please add 'sync' to your spring.profiles");
         }
     }

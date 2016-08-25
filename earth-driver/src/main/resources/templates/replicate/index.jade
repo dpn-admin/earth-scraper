@@ -17,6 +17,7 @@ html(lang="en")
           thead
             tr
               th Id
+              th From
               th Received
               th Extracted
               th Validated
@@ -25,6 +26,7 @@ html(lang="en")
             each repl in replications
               tr
                 td=repl.replicationId
+                td=repl.node
                 td=repl.received
                 td=repl.extracted
                 td=repl.validated

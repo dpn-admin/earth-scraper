@@ -40,6 +40,7 @@ public interface BalustradeBag {
     @PUT(VERSION + "/bag/{uuid}")
     Call<Bag> updateBag(@Path("uuid") String uuid, @Body Bag bag);
 
+    // Move to Events?
     @GET(VERSION + "/bag/{uuid}/digest")
     Call<Response<Digest>> getDigests(@QueryMap Map<String, String> params);
 

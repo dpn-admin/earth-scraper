@@ -27,16 +27,16 @@ public class ValidateTest extends DownloaderTest {
 
         downloader = new Downloader(settings, chronopolis, apis, sql2o);
         String id = "validate-success";
-        ReplicationFlow flow = ReplicationFlow.get(id, sql2o);
+        Replication r = createReplication(id, false, false);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setReceived(true);
         flow.setExtracted(true);
         flow.save(sql2o);
-        Replication r = createReplication(id, false, false);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         downloader.received();
 
         // pull again
-        flow = ReplicationFlow.get(id, sql2o);
+        flow = ReplicationFlow.get(r, sql2o);
         Assert.assertTrue("bag has been validated", flow.isValidated());
     }
 
@@ -47,18 +47,18 @@ public class ValidateTest extends DownloaderTest {
 
         downloader = new Downloader(settings, chronopolis, apis, sql2o);
         String id = "validate-failure-hash";
-        ReplicationFlow flow = ReplicationFlow.get(id, sql2o);
+        Replication r = createReplication(id, false, false);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setReceived(true);
         flow.setExtracted(true);
         flow.save(sql2o);
-        Replication r = createReplication(id, false, false);
         r.setBag(invalid);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(transfer.updateReplication(id, r)).thenReturn(new SuccessfulCall<>(r));
         downloader.received();
 
         // pull again
-        flow = ReplicationFlow.get(id, sql2o);
+        flow = ReplicationFlow.get(r, sql2o);
         Assert.assertFalse("bag is not valid", flow.isValidated());
         Assert.assertTrue("replication is cancelled", r.isCancelled());
         verify(transfer, times(1)).updateReplication(id, r);
@@ -71,17 +71,17 @@ public class ValidateTest extends DownloaderTest {
 
         downloader = new Downloader(settings, chronopolis, apis, sql2o);
         String id = "validate-failure-io";
-        ReplicationFlow flow = ReplicationFlow.get(id, sql2o);
+        Replication r = createReplication(id, false, false);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setReceived(true);
         flow.setExtracted(true);
         flow.save(sql2o);
-        Replication r = createReplication(id, false, false);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(transfer.updateReplication(id, r)).thenReturn(new SuccessfulCall<>(r));
         downloader.received();
 
         // pull again
-        flow = ReplicationFlow.get(id, sql2o);
+        flow = ReplicationFlow.get(r, sql2o);
         Assert.assertFalse("bag is not valid", flow.isValidated());
         Assert.assertTrue("replication is cancelled", r.isCancelled());
         verify(transfer, times(1)).updateReplication(id, r);

@@ -135,7 +135,7 @@ public class Downloader {
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getBag();
-                    ReplicationFlow flow = ReplicationFlow.get(transfer.getReplicationId(), sql2o);
+                    ReplicationFlow flow = ReplicationFlow.get(transfer, sql2o);
 
                     try {
                         if (flow.isReceived()) {
@@ -187,7 +187,7 @@ public class Downloader {
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getBag();
-                    ReplicationFlow flow = ReplicationFlow.get(transfer.getReplicationId(), sql2o);
+                    ReplicationFlow flow = ReplicationFlow.get(transfer, sql2o);
 
                     try {
 

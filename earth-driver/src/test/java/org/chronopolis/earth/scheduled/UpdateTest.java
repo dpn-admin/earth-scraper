@@ -29,10 +29,10 @@ public class UpdateTest extends DownloaderTest {
 
         downloader = new Downloader(settings, chronopolis, apis, sql2o);
         String replicationId = "update-success";
-        ReplicationFlow flow = ReplicationFlow.get(replicationId, sql2o);
+        Replication r = createReplication(replicationId, false, false);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setReceived(true);
         flow.save(sql2o);
-        Replication r = createReplication(replicationId, false, false);
         ZonedDateTime past = r.getUpdatedAt();
         String fixity = r.getFixityValue();
 
@@ -57,10 +57,10 @@ public class UpdateTest extends DownloaderTest {
 
         downloader = new Downloader(settings, chronopolis, apis, sql2o);
         String replicationId = "update-failure-io";
-        ReplicationFlow flow = ReplicationFlow.get(replicationId, sql2o);
+        Replication r = createReplication(replicationId, false, false);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setReceived(true);
         flow.save(sql2o);
-        Replication r = createReplication(replicationId, false, false);
         ZonedDateTime past = r.getUpdatedAt();
 
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
@@ -83,10 +83,10 @@ public class UpdateTest extends DownloaderTest {
 
         downloader = new Downloader(settings, chronopolis, apis, sql2o);
         String replicationId = "update-failure-hash";
-        ReplicationFlow flow = ReplicationFlow.get(replicationId, sql2o);
+        Replication r = createReplication(replicationId, false, false);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setReceived(true);
         flow.save(sql2o);
-        Replication r = createReplication(replicationId, false, false);
         r.setBag(invalid);
         ZonedDateTime past = r.getUpdatedAt();
 

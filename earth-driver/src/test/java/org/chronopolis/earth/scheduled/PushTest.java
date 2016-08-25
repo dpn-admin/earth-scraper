@@ -35,7 +35,7 @@ public class PushTest extends DownloaderTest {
         Bag b = new Bag("5ayadda", "mock-node");
         String id = "push-success";
         Replication r = createReplication(id, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(id, sql2o);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setExtracted(true);
         flow.setReceived(true);
         flow.setValidated(true);
@@ -44,7 +44,7 @@ public class PushTest extends DownloaderTest {
         when(chronopolis.stageBag(any(IngestRequest.class))).thenReturn(new SuccessfulCall<>(b));
         downloader.received();
 
-        flow = ReplicationFlow.get(id, sql2o);
+        flow = ReplicationFlow.get(r, sql2o);
         verify(chronopolis, times(1)).stageBag(any(IngestRequest.class));
         Assert.assertTrue("ReplicationFlow isPushed", flow.isPushed());
     }
@@ -61,7 +61,7 @@ public class PushTest extends DownloaderTest {
         Bag b = new Bag("5ayadda", "mock-node");
         String id = "push-failure";
         Replication r = createReplication(id, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(id, sql2o);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setExtracted(true);
         flow.setReceived(true);
         flow.setValidated(true);
@@ -70,7 +70,7 @@ public class PushTest extends DownloaderTest {
         when(chronopolis.stageBag(any(IngestRequest.class))).thenReturn(new FailedCall<>(b));
         downloader.received();
 
-        flow = ReplicationFlow.get(id, sql2o);
+        flow = ReplicationFlow.get(r, sql2o);
         verify(chronopolis, times(1)).stageBag(any(IngestRequest.class));
         Assert.assertFalse("ReplicationFlow is not pushed", flow.isPushed());
     }

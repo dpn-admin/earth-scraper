@@ -81,7 +81,7 @@ public class DownloaderTest {
     private static void initTables(Sql2o sql2o) {
         try (Connection conn = sql2o.open()) {
             log.info("Checking if replication_flow exists");
-            createIfNotExists(conn, "replication_flow", "CREATE TABLE replication_flow(replication_id string PRIMARY KEY, pushed TINYINT, received TINYINT, extracted TINYINT, validated TINYINT)");
+            createIfNotExists(conn, "replication_flow", "CREATE TABLE replication_flow(replication_id string PRIMARY KEY, node string, pushed TINYINT, received TINYINT, extracted TINYINT, validated TINYINT)");
         }
     }
 

@@ -24,15 +24,15 @@ public class UntarTest extends DownloaderTest {
 
         downloader = new Downloader(settings, chronopolis, apis, sql2o);
         String id = "untar-success";
-        ReplicationFlow flow = ReplicationFlow.get(id, sql2o);
+        Replication r = createReplication(id, false, false);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setReceived(true);
         flow.save(sql2o);
-        Replication r = createReplication(id, false, false);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         downloader.received();
 
         // pull again
-        flow = ReplicationFlow.get(id, sql2o);
+        flow = ReplicationFlow.get(r, sql2o);
         Assert.assertTrue("tarball has been extracted", flow.isExtracted());
         // java.nio.file.Files.deleteIfExists(bagLink.getParent().resolve("599b663d-b5e8-4f56-b332-4418eac0f8f2"));
     }
@@ -44,15 +44,15 @@ public class UntarTest extends DownloaderTest {
 
         downloader = new Downloader(settings, chronopolis, apis, sql2o);
         String id = "untar-failure";
-        ReplicationFlow flow = ReplicationFlow.get(id, sql2o);
+        Replication r = createReplication(id, false, false);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         flow.setReceived(true);
         flow.save(sql2o);
-        Replication r = createReplication(id, false, false);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         downloader.received();
 
         // pull again
-        flow = ReplicationFlow.get(id, sql2o);
+        flow = ReplicationFlow.get(r, sql2o);
         Assert.assertFalse("tarball has not been extracted", flow.isExtracted());
     }
 }

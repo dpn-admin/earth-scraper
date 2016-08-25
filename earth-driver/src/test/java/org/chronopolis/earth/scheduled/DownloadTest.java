@@ -65,7 +65,7 @@ public class DownloadTest extends DownloaderTest {
         downloader.requested();
 
         // verifies...
-        ReplicationFlow flow = ReplicationFlow.get(replicationId, sql2o);
+        ReplicationFlow flow = ReplicationFlow.get(dlSuccess, sql2o);
         Assert.assertNotNull("ReplicationFlow exists", flow);
         Assert.assertTrue("Replication has been received", flow.isReceived());
     }
@@ -84,7 +84,7 @@ public class DownloadTest extends DownloaderTest {
         downloader.requested();
 
         // verifies...
-        ReplicationFlow flow = ReplicationFlow.get(replicationId, sql2o);
+        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
         Assert.assertNotNull("ReplicationFlow exists", flow);
         Assert.assertFalse("Replication has not been received", flow.isReceived());
     }
