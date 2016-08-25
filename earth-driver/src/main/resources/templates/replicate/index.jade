@@ -18,16 +18,16 @@ html(lang="en")
             tr
               th Id
               th Received
-              th Validated
               th Extracted
+              th Validated
               th Pushed
           tbody
             each repl in replications
               tr
                 td=repl.replicationId
                 td=repl.received
-                td=repl.validated
                 td=repl.extracted
+                td=repl.validated
                 td=repl.pushed
 
 
