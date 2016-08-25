@@ -171,6 +171,7 @@ public class Downloader {
         Response<Replication> transfers;
         Map<String, String> params = Maps.newHashMap();
         params.put("store_requested", String.valueOf(true));
+        params.put("stored", String.valueOf(false));
         params.put("page_size", String.valueOf(pageSize));
 
         for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
