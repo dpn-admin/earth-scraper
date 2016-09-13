@@ -24,10 +24,15 @@ public class Bag {
     List<String> interpretive;
     List<String> rights;
     List<String> replicatingNodes;
-    Map<String, String> fixities;
     ZonedDateTime createdAt;
     ZonedDateTime updatedAt;
     String member;
+
+    /**
+     * @deprecated use {@link Digest} instead, will be removed by 2.0.0-RELEASE
+     */
+    @Deprecated
+    Map<String, String> fixities;
 
     public Bag() {
     }
