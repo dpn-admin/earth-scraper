@@ -148,9 +148,9 @@ public class Downloader {
                             log.info("Updating replication {}", transfer.getReplicationId());
                             update(api, transfer);
                         } else {
-                            download(api, transfer, flow);
+                            download(transfer, flow);
                         }
-                    } catch (InterruptedException | IOException e) {
+                    } catch (IOException e) {
                         log.error("[{}] Error downloading {}, skipping", from, uuid, e);
                     } finally {
                         session.saveOrUpdate(flow);
@@ -421,9 +421,9 @@ public class Downloader {
      *
      * @param transfer The replication transfer to download
      * @param flow     The flow object corresponding to the replication
-     * @throws InterruptedException
+     * @throws IOException an io related... exception
      */
-    public void download(BalustradeTransfers api, Replication transfer, ReplicationFlow flow) throws InterruptedException, IOException {
+    public void download(Replication transfer, ReplicationFlow flow) throws IOException {
         String stage = settings.getStage();
         String uuid = transfer.getBag();
         String from = transfer.getFromNode();
@@ -448,7 +448,13 @@ public class Downloader {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         try {
             Process p = pb.start();
-            int exit = p.waitFor();
+            int exit = 0;
+            try {
+                exit = p.waitFor();
+            } catch (InterruptedException e) {
+                log.error("Interrupted waiting for rsync to complete", e);
+                Thread.currentThread().interrupt();
+            }
 
             stats = stringFromStream(p.getInputStream());
 
@@ -459,12 +465,11 @@ public class Downloader {
             } else {
                 log.info("rsync successful, updating replication transfer");
                 flow.setReceived(true);
-                // flow.save(sql2o);
             }
 
             log.debug("Rsync stats:\n {}", stats);
         } catch (IOException e) {
-            log.error("Error executing rsync");
+            log.error("Error executing rsync", e);
         }
 
     }
@@ -580,11 +585,13 @@ public class Downloader {
                 // it is read, so we don't need to worry about it
                 out.transferFrom(inChannel, 0, entry.getSize());
                 out.close();
+                file.close();
             }
 
             entry = tais.getNextTarEntry();
         }
 
+        inChannel.close();
         flow.setExtracted(true);
     }
 
