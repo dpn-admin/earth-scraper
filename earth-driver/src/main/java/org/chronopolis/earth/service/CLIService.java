@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import org.sql2o.Sql2o;
 import retrofit2.Call;
 
 import java.io.BufferedReader;
@@ -55,9 +54,6 @@ public class CLIService implements DpnService {
 
     @Autowired
     NodeAPIs nodeAPIs;
-
-    @Autowired
-    Sql2o sql2o;
 
     @Autowired
     ApplicationContext context;
@@ -97,6 +93,7 @@ public class CLIService implements DpnService {
         try {
             dl = context.getBean(Downloader.class);
         } catch (Exception e) {
+            log.error("", e);
             System.out.println("Unable to create downloader");
             return;
         }
@@ -112,13 +109,14 @@ public class CLIService implements DpnService {
             retrofit2.Response<Replication> response = replicationCall.execute();
             replication = response.body();
         } catch (IOException e) {
+            log.error("", e);
             System.out.println("Unable to get replication from " + node + " with uuid " + uuid);
             return;
         }
 
         try {
-            ReplicationFlow flow = ReplicationFlow.get(replication, sql2o);
-            dl.download(api, replication, flow);
+            ReplicationFlow flow = null; // ReplicationFlow.get(replication, null);
+            dl.download(replication, flow);
             System.out.println("Downloaded. Waiting on input to continue.");
             readLine();
             dl.update(api, replication);
@@ -129,8 +127,8 @@ public class CLIService implements DpnService {
             System.out.println("Validated. Waiting on input to continue.");
             readLine();
             dl.push(replication, flow);
-        } catch (InterruptedException | IOException e) {
-            e.printStackTrace();
+        } catch (IOException e) {
+            log.error("", e);
         }
     }
 
@@ -211,7 +209,7 @@ public class CLIService implements DpnService {
             Response<Replication> replications = response.get();
             log.info("Showing {} out of {} total", replications.getResults().size(), replications.getCount());
             for (Replication replication : replications.getResults()) {
-                // log.info("[{}] {}", replication.status(), replication.getReplicationId());
+                // log.info("[{}] {}", replication.status(), replication.getId());
             }
         }
     }
@@ -248,7 +246,14 @@ public class CLIService implements DpnService {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             return reader.readLine();
         } catch (IOException ex) {
-            throw new RuntimeException("Unable to read STDIN");
+            log.error("Unable to read from stdin", ex);
+            throw new CLIException("Unable to read STDIN");
+        }
+    }
+
+    class CLIException extends RuntimeException {
+        CLIException(String s) {
+            super(s);
         }
     }
 
