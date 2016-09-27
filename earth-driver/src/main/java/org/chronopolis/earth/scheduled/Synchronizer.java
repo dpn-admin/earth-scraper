@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -379,13 +380,17 @@ public class Synchronizer {
 
         @Override
         public boolean hasNext() {
-            return results.size() > 0 || (page-1) * pageSize <= count;
+            return !results.isEmpty() || (page-1) * pageSize <= count;
         }
 
         @Override
         public Optional<T> next() {
             if (results.isEmpty()) {
                 populate();
+            }
+
+            if (!hasNext()) {
+                throw new NoSuchElementException();
             }
 
             return Optional.ofNullable(results.remove(0));
@@ -434,11 +439,6 @@ public class Synchronizer {
 
             detail.setResponseBody(body);
             view.addHttpDetail(detail);
-        }
-
-        @Override
-        public void remove() {
-            throw new RuntimeException("Not Supported");
         }
 
         @Override
@@ -531,7 +531,7 @@ public class Synchronizer {
                     return response.body();
                 }
 
-                throw new Exception(response.errorBody().string());
+                throw new SyncException(response.errorBody().string());
             });
 
             Futures.addCallback(submit, new FutureCallback<Node>() {
@@ -550,4 +550,9 @@ public class Synchronizer {
         }
     }
 
+    class SyncException extends Exception {
+        public SyncException(String s) {
+            super(s);
+        }
+    }
 }
