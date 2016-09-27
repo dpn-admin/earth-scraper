@@ -16,6 +16,8 @@ import org.chronopolis.earth.models.Response;
 import org.chronopolis.earth.models.SumResponse;
 import org.chronopolis.earth.scheduled.Downloader;
 import org.chronopolis.earth.scheduled.Synchronizer;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,17 +48,21 @@ import java.util.Optional;
 public class CLIService implements DpnService {
     private final Logger log = LoggerFactory.getLogger(CLIService.class);
 
-    @Autowired
-    TransferAPIs transferAPIs;
+    final BagAPIs bagAPIs;
+    final NodeAPIs nodeAPIs;
+    final TransferAPIs transferAPIs;
+
+    final SessionFactory factory;
+    final ApplicationContext context;
 
     @Autowired
-    BagAPIs bagAPIs;
-
-    @Autowired
-    NodeAPIs nodeAPIs;
-
-    @Autowired
-    ApplicationContext context;
+    public CLIService(BagAPIs bagAPIs, NodeAPIs nodeAPIs, ApplicationContext context, TransferAPIs transferAPIs, SessionFactory factory) {
+        this.bagAPIs = bagAPIs;
+        this.nodeAPIs = nodeAPIs;
+        this.context = context;
+        this.transferAPIs = transferAPIs;
+        this.factory = factory;
+    }
 
     @Override
     public void replicate() {
@@ -115,7 +121,9 @@ public class CLIService implements DpnService {
         }
 
         try {
-            ReplicationFlow flow = null; // ReplicationFlow.get(replication, null);
+            Session session = factory.openSession();
+            ReplicationFlow flow = getRF(session, replication);
+            session.close();
             dl.download(replication, flow);
             System.out.println("Downloaded. Waiting on input to continue.");
             readLine();
@@ -131,6 +139,18 @@ public class CLIService implements DpnService {
             log.error("", e);
         }
     }
+
+    private ReplicationFlow getRF(Session session, Replication transfer) {
+        ReplicationFlow flow = session.get(ReplicationFlow.class, transfer.getReplicationId());
+        if (flow == null) {
+            flow = new ReplicationFlow();
+            flow.setId(transfer.getReplicationId());
+            flow.setNode(transfer.getFromNode());
+        }
+
+        return flow;
+    }
+
 
     /**
      * Attempt to sync; Display text saying we can't if the profile is not loaded
