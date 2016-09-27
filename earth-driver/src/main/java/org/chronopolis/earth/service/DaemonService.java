@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Service for when we run in the background
- *
+ * <p>
  * Created by shake on 7/7/15.
  */
 @Component
@@ -24,15 +24,17 @@ public class DaemonService implements DpnService {
     public void replicate() {
         System.out.close();
         System.err.close();
+        boolean interrupted = false;
 
-        try {
-            while (true) {
+        while (!interrupted) {
+            try {
                 Thread.sleep(30000);
                 log.trace("sleeping...");
+            } catch (InterruptedException e) {
+                log.error("Thread interrupted", e);
+                interrupted = true;
+                Thread.currentThread().interrupt();
             }
-        } catch (InterruptedException e) {
-            log.info("Thread interrtuped, exiting");
         }
-
     }
 }
