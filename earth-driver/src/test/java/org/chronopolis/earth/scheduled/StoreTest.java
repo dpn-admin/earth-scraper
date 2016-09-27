@@ -2,7 +2,6 @@ package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableList;
 import org.chronopolis.earth.EarthSettings;
-import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.rest.entities.Bag;
 import org.chronopolis.rest.models.BagStatus;
@@ -29,18 +28,13 @@ public class StoreTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setLogChron(true);
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
 
         Bag b = new Bag("5ayadda", "mock-node");
         b.setStatus(BagStatus.PRESERVED);
         String replicationId = "store-success";
         Replication r = createReplication(replicationId, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setExtracted(true);
-        flow.setReceived(true);
-        flow.setValidated(true);
-        flow.setPushed(true);
-        flow.save(sql2o);
+        saveNewFlow(r, true, true, true, true);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(chronopolis.getBags(anyMap())).thenReturn(new SuccessfulCall(new PageImpl<>(ImmutableList.of(b))));
         when(transfer.updateReplication(replicationId, r)).thenReturn(new SuccessfulCall<>(r));
@@ -57,16 +51,11 @@ public class StoreTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setLogChron(true);
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
 
         String replicationId = "store-fail-chron";
         Replication r = createReplication(replicationId, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setExtracted(true);
-        flow.setReceived(true);
-        flow.setValidated(true);
-        flow.setPushed(true);
-        flow.save(sql2o);
+        saveNewFlow(r, true, true, true, true);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(chronopolis.getBags(anyMap())).thenReturn(new ExceptedCall());
         when(transfer.updateReplication(replicationId, r)).thenReturn(new SuccessfulCall<>(r));
@@ -83,18 +72,13 @@ public class StoreTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setLogChron(true);
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
 
         Bag b = new Bag("5ayadda", "mock-node");
         b.setStatus(BagStatus.REPLICATING);
         String replicationId = "store-not-preserved";
         Replication r = createReplication(replicationId, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setExtracted(true);
-        flow.setReceived(true);
-        flow.setValidated(true);
-        flow.setPushed(true);
-        flow.save(sql2o);
+        saveNewFlow(r, true, true, true, true);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(chronopolis.getBags(anyMap())).thenReturn(new SuccessfulCall(new PageImpl<>(ImmutableList.of(b))));
         when(transfer.updateReplication(replicationId, r)).thenReturn(new SuccessfulCall<>(r));

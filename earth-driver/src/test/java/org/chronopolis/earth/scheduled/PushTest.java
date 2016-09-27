@@ -30,21 +30,17 @@ public class PushTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setIngest(new Ingest().setNode("ucsd-dpn"));
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
 
         Bag b = new Bag("5ayadda", "mock-node");
         String id = "push-success";
         Replication r = createReplication(id, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setExtracted(true);
-        flow.setReceived(true);
-        flow.setValidated(true);
-        flow.save(sql2o);
+        saveNewFlow(r, true, true, true, false);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(chronopolis.stageBag(any(IngestRequest.class))).thenReturn(new SuccessfulCall<>(b));
         downloader.received();
 
-        flow = ReplicationFlow.get(r, sql2o);
+        ReplicationFlow flow = getFlow(id);
         verify(chronopolis, times(1)).stageBag(any(IngestRequest.class));
         Assert.assertTrue("ReplicationFlow isPushed", flow.isPushed());
     }
@@ -56,21 +52,17 @@ public class PushTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setIngest(new Ingest().setNode("ucsd-dpn"));
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
 
         Bag b = new Bag("5ayadda", "mock-node");
         String id = "push-failure";
         Replication r = createReplication(id, true, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setExtracted(true);
-        flow.setReceived(true);
-        flow.setValidated(true);
-        flow.save(sql2o);
+        saveNewFlow(r, true, true, true, false);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(chronopolis.stageBag(any(IngestRequest.class))).thenReturn(new FailedCall<>(b));
         downloader.received();
 
-        flow = ReplicationFlow.get(r, sql2o);
+        ReplicationFlow flow = getFlow(id);
         verify(chronopolis, times(1)).stageBag(any(IngestRequest.class));
         Assert.assertFalse("ReplicationFlow is not pushed", flow.isPushed());
     }

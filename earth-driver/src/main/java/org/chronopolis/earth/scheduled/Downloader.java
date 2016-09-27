@@ -22,6 +22,9 @@ import org.chronopolis.rest.api.IngestAPI;
 import org.chronopolis.rest.entities.Bag;
 import org.chronopolis.rest.models.BagStatus;
 import org.chronopolis.rest.models.IngestRequest;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +32,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.sql2o.Sql2o;
 import retrofit2.Call;
 
 import java.io.BufferedReader;
@@ -65,17 +67,17 @@ public class Downloader {
     private static final String TAG_MANIFEST = "tagmanifest-sha256.txt";
     private static final String MANIFEST = "manifest-sha256.txt";
 
-    Sql2o sql2o;
     TransferAPIs apis;
     IngestAPI chronopolis;
     EarthSettings settings;
+    SessionFactory sessionFactory;
 
     @Autowired
-    public Downloader(EarthSettings settings, IngestAPI chronopolis, TransferAPIs apis, Sql2o sql2o) {
+    public Downloader(EarthSettings settings, IngestAPI chronopolis, TransferAPIs apis, SessionFactory factory) {
         this.apis = apis;
         this.chronopolis = chronopolis;
         this.settings = settings;
-        this.sql2o = sql2o;
+        this.sessionFactory = factory;
     }
 
     private Response<Replication> getTransfers(BalustradeTransfers balustrade,
@@ -127,16 +129,20 @@ public class Downloader {
             page = 1;
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
+
+            // Open for all?
+            // TODO: Put flows in a list and flush accordingly?
+            Session session = sessionFactory.openSession();
+            Transaction tx = session.beginTransaction();
             // log.info("[{}] Getting {} replications", node, status.getName());
             do {
                 params.put("from_node", node);
                 params.put("page", String.valueOf(page));
                 transfers = getTransfers(api, params);
                 for (Replication transfer : transfers.getResults()) {
+                    ReplicationFlow flow = init(session, transfer);
                     String from = transfer.getFromNode();
                     String uuid = transfer.getBag();
-                    ReplicationFlow flow = ReplicationFlow.get(transfer, sql2o);
-
                     try {
                         if (flow.isReceived()) {
                             log.info("Updating replication {}", transfer.getReplicationId());
@@ -146,14 +152,36 @@ public class Downloader {
                         }
                     } catch (InterruptedException | IOException e) {
                         log.error("[{}] Error downloading {}, skipping", from, uuid, e);
+                    } finally {
+                        session.saveOrUpdate(flow);
                     }
                 }
 
                 ++page;
+                tx.commit();
             } while (transfers.getNext() != null);
+            session.close();
+        }
+
+    }
+
+    private ReplicationFlow init(Session session, Replication transfer) {
+        ReplicationFlow flow = session.get(ReplicationFlow.class, transfer.getReplicationId());
+        if (flow == null) {
+            log.info("Creating new replication flow for {}", transfer.getReplicationId());
+            flow = new ReplicationFlow();
+            flow.setId(transfer.getReplicationId());
+            flow.setNode(transfer.getFromNode());
+        } else {
+            log.info("found replication flow for {}", transfer.getReplicationId());
+            log.info("transferred? {}", flow.isReceived());
+            log.info("extracted? {}", flow.isExtracted());
+            log.info("validated? {}", flow.isValidated());
+            log.info("pushed? {}", flow.isPushed());
 
         }
 
+        return flow;
     }
 
     /**
@@ -179,6 +207,9 @@ public class Downloader {
             String node = entry.getKey();
             BalustradeTransfers api = entry.getValue();
             // log.info("[{}] Getting {} replications", node, status.getName());
+
+            Session session = sessionFactory.openSession();
+            Transaction tx = session.beginTransaction();
             do {
                 params.put("from_node", node);
                 params.put("page", String.valueOf(page));
@@ -187,7 +218,7 @@ public class Downloader {
                 for (Replication transfer : transfers.getResults()) {
                     String from = transfer.getFromNode();
                     String uuid = transfer.getBag();
-                    ReplicationFlow flow = ReplicationFlow.get(transfer, sql2o);
+                    ReplicationFlow flow = init(session, transfer);
 
                     try {
 
@@ -207,12 +238,16 @@ public class Downloader {
                         }
                     } catch (IOException e) {
                         log.error("[{}] Error untarring {}, skipping", from, uuid, e);
+                    } finally {
+                        session.update(flow);
                     }
                 }
 
                 ++page;
+                tx.commit();
             } while (transfers.getNext() != null);
 
+            session.close();
         }
     }
 
@@ -290,7 +325,6 @@ public class Downloader {
 
         if (cb.getResponse().isPresent()) {
             flow.setPushed(true);
-            flow.save(sql2o);
         }
     }
 
@@ -327,7 +361,6 @@ public class Downloader {
         log.info("Bag {} is valid: {}", uuid, valid);
         if (valid) {
             flow.setValidated(true);
-            flow.save(sql2o);
         } else {
             transfer.setCancelled(true);
             transfer.setCancelReason("Bag is invalid");
@@ -426,7 +459,7 @@ public class Downloader {
             } else {
                 log.info("rsync successful, updating replication transfer");
                 flow.setReceived(true);
-                flow.save(sql2o);
+                // flow.save(sql2o);
             }
 
             log.debug("Rsync stats:\n {}", stats);
@@ -553,7 +586,6 @@ public class Downloader {
         }
 
         flow.setExtracted(true);
-        flow.save(sql2o);
     }
 
 }

@@ -1,34 +1,33 @@
 package org.chronopolis.earth.domain;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sql2o.Connection;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 
 /**
  * Information regarding http calls
  *
  * Created by shake on 8/12/16.
  */
+@Entity(name = "HttpDetail")
 @SuppressWarnings("WeakerAccess")
 public class HttpDetail {
-    private final Logger log = LoggerFactory.getLogger(HttpDetail.class);
-    static final String INSERT = "INSERT INTO http_detail(url, request_method, request_body, response_code, response_body, %s) " +
-            "VALUES(:url, :requestMethod, :requestBody, :responseCode, :responseBody, :fk)";
 
-    Long httpId;
+    @Id
+    Long id;
+
     String url;
     String requestBody;
     String requestMethod;
 
-    int responseCode = -1;
     String responseBody;
+    int responseCode = -1;
 
-    public Long getHttpId() {
-        return httpId;
+    public Long getId() {
+        return id;
     }
 
-    public HttpDetail setHttpId(Long httpId) {
-        this.httpId = httpId;
+    public HttpDetail setId(Long id) {
+        this.id = id;
         return this;
     }
 
@@ -77,17 +76,4 @@ public class HttpDetail {
         return this;
     }
 
-    public void insert(String type, Long fk, Connection conn) {
-        String insertDetail = String.format(HttpDetail.INSERT, type);
-        // log.info("{}", insertDetail);
-        // log.debug("Creating http detail for {} - {}", type, fk);
-        conn.createQuery(insertDetail)
-                .addParameter("url", url)
-                .addParameter("requestBody", requestBody)
-                .addParameter("requestMethod", requestMethod)
-                .addParameter("responseCode", responseCode)
-                .addParameter("responseBody", responseBody)
-                .addParameter("fk", fk)
-                .executeUpdate();
-    }
 }

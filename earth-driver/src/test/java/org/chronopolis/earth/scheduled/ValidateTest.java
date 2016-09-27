@@ -25,18 +25,15 @@ public class ValidateTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(bagExtracted.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
         String id = "validate-success";
         Replication r = createReplication(id, false, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setReceived(true);
-        flow.setExtracted(true);
-        flow.save(sql2o);
+        saveNewFlow(r, true, true, false, false);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         downloader.received();
 
         // pull again
-        flow = ReplicationFlow.get(r, sql2o);
+        ReplicationFlow flow = getFlow(id);
         Assert.assertTrue("bag has been validated", flow.isValidated());
     }
 
@@ -45,20 +42,17 @@ public class ValidateTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(bagExtracted.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
         String id = "validate-failure-hash";
         Replication r = createReplication(id, false, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setReceived(true);
-        flow.setExtracted(true);
-        flow.save(sql2o);
+        saveNewFlow(r, true, true, false, false);
         r.setBag(invalid);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(transfer.updateReplication(id, r)).thenReturn(new SuccessfulCall<>(r));
         downloader.received();
 
         // pull again
-        flow = ReplicationFlow.get(r, sql2o);
+        ReplicationFlow flow = getFlow(id);
         Assert.assertFalse("bag is not valid", flow.isValidated());
         Assert.assertTrue("replication is cancelled", r.isCancelled());
         verify(transfer, times(1)).updateReplication(id, r);
@@ -69,19 +63,16 @@ public class ValidateTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(bagExtracted.getParent().toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
         String id = "validate-failure-io";
         Replication r = createReplication(id, false, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setReceived(true);
-        flow.setExtracted(true);
-        flow.save(sql2o);
+        saveNewFlow(r, true, true, false, false);
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
         when(transfer.updateReplication(id, r)).thenReturn(new SuccessfulCall<>(r));
         downloader.received();
 
         // pull again
-        flow = ReplicationFlow.get(r, sql2o);
+        ReplicationFlow flow = getFlow(id);
         Assert.assertFalse("bag is not valid", flow.isValidated());
         Assert.assertTrue("replication is cancelled", r.isCancelled());
         verify(transfer, times(1)).updateReplication(id, r);

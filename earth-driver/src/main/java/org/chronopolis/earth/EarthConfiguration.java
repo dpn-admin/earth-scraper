@@ -4,8 +4,6 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import okhttp3.OkHttpClient;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
@@ -24,6 +22,10 @@ import org.chronopolis.rest.entities.Bag;
 import org.chronopolis.rest.support.PageDeserializer;
 import org.chronopolis.rest.support.ZonedDateTimeDeserializer;
 import org.chronopolis.rest.support.ZonedDateTimeSerializer;
+import org.hibernate.SessionFactory;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
@@ -32,12 +34,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.PageImpl;
-import org.sql2o.Connection;
-import org.sql2o.Sql2o;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-import javax.sql.DataSource;
 import java.lang.reflect.Type;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -198,41 +197,13 @@ public class EarthConfiguration {
     }
 
     @Bean
-    DataSource dataSource() {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:sqlite:/tmp/intake.sqlite3");
-        // config.setDataSourceClassName("org.sqlite.SQLiteDataSource");
-        // TODO: we can make this configurable
-        // config.addDataSourceProperty("databaseName", "/tmp/intake.sqlite3");
-        return new HikariDataSource(config);
-    }
+    SessionFactory sessionFactory() {
+        // SessionFactory factory = new SessionFactoryImpl()
+        StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
+                .configure()
+                .build();
 
-    @Bean
-    Sql2o sql2o(DataSource dataSource) {
-        Sql2o sql2o = new Sql2o(dataSource);
-        initTables(sql2o);
-        return sql2o;
-    }
-
-    private void initTables(Sql2o sql2o) {
-        try (Connection conn = sql2o.open()) {
-            createIfNotExists(conn, "replication_flow", "CREATE TABLE replication_flow(replication_id string PRIMARY KEY, node STRING, pushed TINYINT, received TINYINT, extracted TINYINT, validated TINYINT)");
-            createIfNotExists(conn, "sync_view", "CREATE TABLE sync_view(sync_id INTEGER PRIMARY KEY ASC, host string, status string, type string)");
-            // createIfNotExists(conn, "sync_detail", "CREATE TABLE sync_detail(detail_id INTEGER PRIMARY KEY ASC, sync INTEGER, detail text, FOREIGN KEY(sync) REFERENCES sync_view(sync_id))");
-            createIfNotExists(conn, "http_detail", "CREATE TABLE http_detail(http_id INTEGER PRIMARY KEY ASC, url string, request_body text, request_method string, response_code SMALLINT, response_body text, " +
-                    "sync INTEGER, replication string, " +
-                    "FOREIGN KEY(sync) REFERENCES sync_view(sync_id), " +
-                    "FOREIGN KEY(replication) REFERENCES replication_flow(replication_id))");
-        }
-    }
-
-    private void createIfNotExists(Connection conn, String table, String create) {
-        String select = "SELECT name FROM sqlite_master WHERE type='table' AND name = :name";
-        String name = conn.createQuery(select).addParameter("name", table).executeAndFetchFirst(String.class);
-        if (name == null) {
-            log.info("Creating table {}", table);
-            conn.createQuery(create).executeUpdate();
-        }
+        return new MetadataSources(registry).buildMetadata().buildSessionFactory();
     }
 
 }

@@ -4,7 +4,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
@@ -27,6 +26,8 @@ import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.earth.util.DetailEmitter;
 import org.chronopolis.earth.util.LastSync;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
@@ -36,7 +37,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.sql2o.Sql2o;
 import retrofit2.Call;
 
 import javax.annotation.Nullable;
@@ -47,7 +47,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -68,40 +67,40 @@ public class Synchronizer {
 
     private static final Logger log = LoggerFactory.getLogger(Synchronizer.class);
 
-    final Sql2o sql2o;
     final BagAPIs bagAPIs;
     final NodeAPIs nodeAPIs;
     final LocalAPI localAPI;
     final EventAPIs eventAPIs;
     final TransferAPIs transferAPIs;
     final DateTimeFormatter formatter;
+    final SessionFactory sessionFactory;
 
     LastSync lastSync;
     ListeningExecutorService service;
 
     @Autowired
-    public Synchronizer(DateTimeFormatter formatter, Sql2o sql2o, BagAPIs bagAPIs, TransferAPIs transferAPIs, NodeAPIs nodeAPIs, LocalAPI localAPI, EventAPIs eventAPIs) {
-        this.sql2o = sql2o;
+    public Synchronizer(DateTimeFormatter formatter, BagAPIs bagAPIs, TransferAPIs transferAPIs, NodeAPIs nodeAPIs, LocalAPI localAPI, EventAPIs eventAPIs, SessionFactory sessionFactory) {
         this.bagAPIs = bagAPIs;
         this.nodeAPIs = nodeAPIs;
         this.localAPI = localAPI;
         this.eventAPIs = eventAPIs;
         this.formatter = formatter;
         this.transferAPIs = transferAPIs;
+        this.sessionFactory = sessionFactory;
     }
 
     @Scheduled(cron = "${earth.cron.sync:0 0 0 * * *}")
     public void synchronize() {
-        service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
+        // service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
         readLastSync();
-        syncNode();
+        // syncNode();
         syncBags();
         syncTransfers();
         // events
         syncIngests();
         syncFixities();
         syncDigests();
-        service.shutdown(); // shutdown the pool
+        // service.shutdown(); // shutdown the pool
         writeLastSync(lastSync);
     }
 
@@ -150,7 +149,7 @@ public class Synchronizer {
             }
         }
 
-        views.forEach(v -> v.insert(sql2o));
+        save(views);
     }
 
     void syncFixities() {
@@ -187,7 +186,8 @@ public class Synchronizer {
                 log.warn("Not updating last sync to digest for {}", node);
             }
         }
-        views.forEach(v -> v.insert(sql2o));
+
+        save(views);
     }
 
     void syncIngests() {
@@ -225,7 +225,20 @@ public class Synchronizer {
             }
         }
 
-        views.forEach(v -> v.insert(sql2o));
+        save(views);
+    }
+
+    /**
+     * Persist a group of SyncViews
+     *
+     * TODO: This probably isn't the best idiom to use
+     *
+     * @param views
+     */
+    void save(List<SyncView> views) {
+        try (Session session = sessionFactory.openSession()) {
+            views.forEach(session::persist);
+        }
     }
 
     void readLastSync() {
@@ -281,7 +294,7 @@ public class Synchronizer {
             }
         }
 
-        views.forEach(v -> v.insert(sql2o));
+        save(views);
     }
 
     void syncBags() {
@@ -309,7 +322,6 @@ public class Synchronizer {
                     .map(f -> f.map(b -> syncLocal(local::getBag, local::createBag, local::updateBag, b, b.getUuid(), view)))
                     .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
 
-            // view.insert(sql2o);
             views.add(view);
             if (!failure) {
                 // log.info("Adding last sync to bags for {}", node);
@@ -319,7 +331,7 @@ public class Synchronizer {
             }
         }
 
-        views.forEach(v -> v.insert(sql2o));
+        save(views);
     }
 
     // We'll probably want to split these out in to their own classes, but for now this is fine

@@ -1,20 +1,23 @@
 package org.chronopolis.earth.scheduled;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.rest.api.IngestAPI;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sql2o.Connection;
-import org.sql2o.Sql2o;
 import retrofit2.Call;
 import retrofit2.Callback;
 
@@ -39,7 +42,6 @@ import static org.mockito.Mockito.mock;
 public class DownloaderTest {
 
     private static final Logger log = LoggerFactory.getLogger(DownloaderTest.class);
-    static Sql2o sql2o;
 
     final String invalid = "9049d506-ab07-4275-b7b9-288d3fcadcd7";
 
@@ -51,15 +53,16 @@ public class DownloaderTest {
 
     IngestAPI chronopolis;
     BalustradeTransfers transfer;
+    static SessionFactory factory;
 
     @BeforeClass
     public static void setupDB() {
-        HikariConfig hc = new HikariConfig();
-        hc.setMaximumPoolSize(1);
-        hc.setDataSourceClassName("org.sqlite.SQLiteDataSource");
-        // hc.setJdbcUrl("jdbc:sqlite:/tmp/ed-test-db.sqlite3");
-        sql2o = new Sql2o(new HikariDataSource(hc));
-        initTables(sql2o);
+        StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
+                .configure()
+                .applySetting("hibernate.connection.url", "jdbc:h2:mem")
+                .build();
+
+        factory = new MetadataSources(registry).buildMetadata().buildSessionFactory();
     }
 
     @Before
@@ -74,23 +77,28 @@ public class DownloaderTest {
         URL resources = ClassLoader.getSystemClassLoader().getResource("");
         bagLink = Paths.get(resources.toURI()).resolve("tar");
         bagExtracted = Paths.get(resources.toURI()).resolve("stage");
+
+
     }
 
-    // TODO: Common home for these
-
-    private static void initTables(Sql2o sql2o) {
-        try (Connection conn = sql2o.open()) {
-            log.info("Checking if replication_flow exists");
-            createIfNotExists(conn, "replication_flow", "CREATE TABLE replication_flow(replication_id string PRIMARY KEY, node string, pushed TINYINT, received TINYINT, extracted TINYINT, validated TINYINT)");
-        }
+    void saveNewFlow(Replication r, boolean extracted, boolean received, boolean validated, boolean pushed) {
+        Session session = factory.openSession();
+        Transaction transaction = session.beginTransaction();
+        ReplicationFlow flow = new ReplicationFlow();
+        flow.setId(r.getReplicationId());
+        flow.setNode(r.getFromNode());
+        flow.setExtracted(extracted);
+        flow.setReceived(received);
+        flow.setValidated(validated);
+        flow.setPushed(pushed);
+        session.persist(flow);
+        transaction.commit();
+        session.close();
     }
 
-    private static void createIfNotExists(Connection conn, String table, String create) {
-        String select = "SELECT name FROM sqlite_master WHERE type='table' AND name = :name";
-        String name = conn.createQuery(select).addParameter("name", table).executeAndFetchFirst(String.class);
-        if (name == null) {
-            log.info("Creating table {}", table);
-            conn.createQuery(create).executeUpdate();
+    ReplicationFlow getFlow(String id) {
+        try (Session s = factory.openSession()) {
+            return s.get(ReplicationFlow.class, id);
         }
     }
 

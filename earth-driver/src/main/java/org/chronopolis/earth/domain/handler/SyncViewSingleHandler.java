@@ -1,7 +1,6 @@
 package org.chronopolis.earth.domain.handler;
 
 import org.chronopolis.earth.domain.SyncView;
-import org.sql2o.ResultSetHandler;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,9 +10,10 @@ import java.sql.SQLException;
  *
  * Created by shake on 8/15/16.
  */
-public class SyncViewSingleHandler extends SyncViewHandler implements ResultSetHandler<SyncView> {
+@Deprecated
+public class SyncViewSingleHandler extends SyncViewHandler { // implements ResultSetHandler<SyncView> {
 
-    @Override
+    // @Override
     public SyncView handle(ResultSet resultSet) throws SQLException {
         if (resultSet.isClosed()) {
             return null;

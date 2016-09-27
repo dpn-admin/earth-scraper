@@ -1,7 +1,6 @@
 package org.chronopolis.earth.scheduled;
 
 import org.chronopolis.earth.EarthSettings;
-import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Replication;
 import org.junit.Assert;
 import org.junit.Test;
@@ -27,12 +26,10 @@ public class UpdateTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setStage(bagLink.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
         String replicationId = "update-success";
         Replication r = createReplication(replicationId, false, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setReceived(true);
-        flow.save(sql2o);
+        saveNewFlow(r, false, true, false, false);
         ZonedDateTime past = r.getUpdatedAt();
         String fixity = r.getFixityValue();
 
@@ -55,12 +52,10 @@ public class UpdateTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setStage(bagLink.getParent().toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
         String replicationId = "update-failure-io";
         Replication r = createReplication(replicationId, false, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setReceived(true);
-        flow.save(sql2o);
+        saveNewFlow(r, false, true, false, false);
         ZonedDateTime past = r.getUpdatedAt();
 
         when(transfer.getReplications(anyMap())).thenReturn(new SuccessfulCall<>(responseWrapper(r)));
@@ -81,12 +76,10 @@ public class UpdateTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setStage(bagLink.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
         String replicationId = "update-failure-hash";
         Replication r = createReplication(replicationId, false, false);
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
-        flow.setReceived(true);
-        flow.save(sql2o);
+        saveNewFlow(r, false, true, false, false);
         r.setBag(invalid);
         ZonedDateTime past = r.getUpdatedAt();
 

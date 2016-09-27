@@ -2,7 +2,6 @@ package org.chronopolis.earth.domain.handler;
 
 import com.google.common.collect.ImmutableList;
 import org.chronopolis.earth.domain.SyncView;
-import org.sql2o.ResultSetHandler;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,9 +14,10 @@ import java.util.List;
  * Created by shake on 8/11/16.
  */
 @SuppressWarnings("WeakerAccess")
-public class SyncViewListHandler extends SyncViewHandler implements ResultSetHandler<List<SyncView>> {
+@Deprecated
+public class SyncViewListHandler extends SyncViewHandler { // implements ResultSetHandler<List<SyncView>> {
 
-    @Override
+    // @Override
     public List<SyncView> handle(ResultSet resultSet) throws SQLException {
         if (resultSet.isClosed()) {
             return ImmutableList.of();

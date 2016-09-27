@@ -55,7 +55,7 @@ public class DownloadTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(tmp.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
 
         String replicationId = "download-success";
         Replication dlSuccess = createReplication(replicationId, false, false);
@@ -65,7 +65,7 @@ public class DownloadTest extends DownloaderTest {
         downloader.requested();
 
         // verifies...
-        ReplicationFlow flow = ReplicationFlow.get(dlSuccess, sql2o);
+        ReplicationFlow flow = getFlow("download-success");
         Assert.assertNotNull("ReplicationFlow exists", flow);
         Assert.assertTrue("Replication has been received", flow.isReceived());
     }
@@ -75,7 +75,7 @@ public class DownloadTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(tmp.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, sql2o);
+        downloader = new Downloader(settings, chronopolis, apis, factory);
 
         String replicationId = "download-failure";
         Replication r = createReplication(replicationId, "not-a-valid-link", false, false);
@@ -84,7 +84,7 @@ public class DownloadTest extends DownloaderTest {
         downloader.requested();
 
         // verifies...
-        ReplicationFlow flow = ReplicationFlow.get(r, sql2o);
+        ReplicationFlow flow = getFlow("download-failure");
         Assert.assertNotNull("ReplicationFlow exists", flow);
         Assert.assertFalse("Replication has not been received", flow.isReceived());
     }

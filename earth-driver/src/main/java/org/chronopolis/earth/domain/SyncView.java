@@ -1,12 +1,12 @@
 package org.chronopolis.earth.domain;
 
-import org.chronopolis.earth.domain.handler.SyncViewListHandler;
-import org.chronopolis.earth.domain.handler.SyncViewSingleHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sql2o.Connection;
-import org.sql2o.Sql2o;
-
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,15 +14,23 @@ import java.util.List;
  *
  * Created by shake on 8/5/16.
  */
+@Entity
 public class SyncView {
-    private final Logger log = LoggerFactory.getLogger(SyncView.class);
 
+    @Id
+    @GeneratedValue
     private Long id;
-    private String host;
-    private List<HttpDetail> httpDetails = new ArrayList<>();
 
+    private String host;
+
+    @Enumerated(EnumType.STRING)
     private SyncType type;
+
+    @Enumerated(EnumType.STRING)
     private SyncStatus status;
+
+    @OneToMany(fetch = FetchType.EAGER)
+    private List<HttpDetail> httpDetails = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -72,63 +80,6 @@ public class SyncView {
     public SyncView setStatus(SyncStatus status) {
         this.status = status;
         return this;
-    }
-
-
-    // DB Ops
-
-    /**
-     * Insert a SyncView in to the database. For the most part these are in their final state
-     * when they reach us, so there's no real point to return it or try to query it on the get.
-     *
-     * One thing we might want is to do batch inserts, which looks like it will require two
-     * Query objects, one for the view and one for the details. That will be for another day, though.
-     *
-     * @param sql2o the connection to the database
-     */
-    public void insert(Sql2o sql2o) {
-        String insertView = "INSERT INTO sync_view(host, type, status) VALUES(:host, :type, :status)";
-        try (Connection conn = sql2o.open()) {
-            // log.debug("Creating sync view for {}:{}", host, type);
-            Long key = conn.createQuery(insertView)
-                    .addParameter("host", host)
-                    .addParameter("type", type.toString())
-                    .addParameter("status", status.toString())
-                    .executeUpdate().getKey(Long.class);
-            httpDetails.forEach(d -> d.insert("sync", key, conn));
-        }
-    }
-
-    /**
-     * Get a single SyncView based on it's Id. Not really sure what the purpose of this is.
-     *
-     * @param id the id of the view to retrieve
-     * @param sql2o the connection to the database
-     * @return the SyncView found
-     */
-    public static SyncView get(Long id, Sql2o sql2o) {
-        String select = "SELECT * FROM sync_view INNER JOIN http_detail ON sync_view.sync_id = http_detail.sync WHERE sync_view.sync_id = :syncId";
-
-        try (Connection conn = sql2o.open()) {
-            return conn.createQuery(select)
-                    .addParameter("syncId", id)
-                    .executeAndFetchFirst(new SyncViewSingleHandler());
-        }
-    }
-
-    /**
-     * Get all SyncViews. May need to do FetchLazy in the Future.
-     *
-     * @param sql2o the connection to the database
-     * @return the SyncView found
-     */
-    public static List<SyncView> getAll(Sql2o sql2o) {
-        String select = "SELECT * FROM sync_view LEFT JOIN http_detail ON sync_view.sync_id = http_detail.sync ORDER BY sync_id DESC";
-
-        try (Connection conn = sql2o.open()) {
-            return conn.createQuery(select)
-                    .executeAndFetchFirst(new SyncViewListHandler());
-        }
     }
 
 }
