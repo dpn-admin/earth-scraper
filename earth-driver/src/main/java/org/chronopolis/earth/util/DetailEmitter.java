@@ -13,6 +13,7 @@ import retrofit2.Response;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Phaser;
 
 /**
  * Based off of the SimpleCallback, a class to emit HttpDetails for us
@@ -26,6 +27,7 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
     private Request rawRequest;
     private int responseCode = -1;
     private String responseBody;
+    private Phaser phaser = new Phaser(2);
     private CountDownLatch latch = new CountDownLatch(1);
 
     @Override
@@ -33,13 +35,13 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
         responseCode = response.code();
         this.rawRequest = call.request();
         if (response.isSuccessful()) {
-            // log.debug("");
             this.response = response.body();
         } else {
             String error;
             try {
                 error = response.errorBody().string();
             } catch (IOException e) {
+                log.error("Error creating response body", e);
                 error = e.getMessage();
             }
 
@@ -47,7 +49,7 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
             log.warn("Failed http call: [{}]{} | {}", call.request().method(), call.request().url(), response.code());
         }
 
-        latch.countDown();
+        phaser.arriveAndDeregister();
     }
 
     @Override
@@ -56,21 +58,21 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
         rawRequest = call.request();
         responseBody = throwable.getMessage();
 
-        latch.countDown();
+        phaser.arriveAndDeregister();
     }
 
     public HttpDetail emit() {
-        await();
+        phaser.arriveAndAwaitAdvance();
         HttpDetail detail = new HttpDetail();
         if (rawRequest != null) {
             detail.setUrl(rawRequest.url().toString());
             detail.setRequestMethod(rawRequest.method());
             if (rawRequest.body() != null) {
-                Buffer b = new Buffer();
-                try {
+                try (Buffer b = new Buffer()) {
                     rawRequest.body().writeTo(b);
                     detail.setRequestBody(b.readUtf8());
                 } catch (IOException ignored) {
+                    log.error("Error emitting http detail", ignored);
                 }
             }
         }
@@ -81,15 +83,7 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
 
     @Override
     public Optional<T> getResponse() {
-        await();
+        phaser.arriveAndAwaitAdvance();
         return Optional.ofNullable(response);
-    }
-
-    private void await() {
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            log.error("Error awaiting latch count down", e);
-        }
     }
 }
