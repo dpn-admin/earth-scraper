@@ -1,6 +1,7 @@
 package org.chronopolis.earth.domain;
 
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
 /**
@@ -13,6 +14,7 @@ import javax.persistence.Id;
 public class HttpDetail {
 
     @Id
+    @GeneratedValue
     Long id;
 
     String url;
