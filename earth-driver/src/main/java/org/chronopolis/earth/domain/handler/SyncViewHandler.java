@@ -9,10 +9,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
+ * @deprecated Will be removed by 2.0.0-RELEASE
  * Base for our SyncView handlers. Populates the column ids, creates SyncViews and HttpDetails.
  *
  * Created by shake on 8/11/16.
  */
+@Deprecated
 public class SyncViewHandler {
     int joinCol;
     private int idCol;

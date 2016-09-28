@@ -54,8 +54,7 @@ public class Sync {
         List<SyncView> views;
         try (Session session = factory.openSession()) {
             views = session.createQuery("from SyncView", SyncView.class).list();
-            log.info("Found {} views to display", views.size());
-
+            // log.info("Found {} views to display", views.size());
         }
         model.addAttribute("syncs", views);
         return "sync/index";

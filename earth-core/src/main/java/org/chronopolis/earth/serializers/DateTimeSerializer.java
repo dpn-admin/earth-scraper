@@ -11,6 +11,7 @@ import org.joda.time.format.ISODateTimeFormat;
 import java.lang.reflect.Type;
 
 /**
+ * @deprecated Will by removed by 2.0.0-RELEASE
  * GSON serializer for DateTime objects
  *
  * Created by shake on 5/7/15.

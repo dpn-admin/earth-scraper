@@ -261,7 +261,6 @@ public class Downloader {
      */
     public void store(BalustradeTransfers api, Replication transfer) {
         // First check if we have the bag stored in chronopolis
-        // String from = transfer.getFromNode();
         String uuid = transfer.getBag();
 
         Map<String, Object> chronParams = Maps.newHashMap();

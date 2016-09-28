@@ -35,6 +35,7 @@ public class Bag {
     Map<String, String> fixities;
 
     public Bag() {
+        // default constructor idkmybffrose
     }
 
     public String getUuid() {

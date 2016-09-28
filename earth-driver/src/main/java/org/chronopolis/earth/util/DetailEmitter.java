@@ -12,7 +12,6 @@ import retrofit2.Response;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Phaser;
 
 /**
@@ -28,7 +27,6 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
     private int responseCode = -1;
     private String responseBody;
     private Phaser phaser = new Phaser(2);
-    private CountDownLatch latch = new CountDownLatch(1);
 
     @Override
     public void onResponse(Call<T> call, Response<T> response) {

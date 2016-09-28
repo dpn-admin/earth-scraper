@@ -105,23 +105,6 @@ public class EarthConfiguration {
             log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
 
             OkHttpClient client = new OkHttpClient.Builder()
-                    /*
-                    .addInterceptor(chain -> {
-                        Request req = chain.request();
-
-                        if (settings.logRemote()) {
-                            // log.debug("[{}] {}", req.method(), req.url());
-                            if (req.body() != null) {
-                                Buffer b = new Buffer();
-                                req.body().writeTo(b);
-                                // log.debug("{}", b.readUtf8());
-                            } else {
-                                // log.trace("Skipping trace of http call");
-                            }
-                        }
-
-                        return chain.proceed(req);
-                    })*/
                     .addInterceptor(new OkTokenInterceptor(endpoint.getAuthKey()))
                     .build();
 

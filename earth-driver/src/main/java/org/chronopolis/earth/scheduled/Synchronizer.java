@@ -143,9 +143,9 @@ public class Synchronizer {
 
             views.add(view);
             if (!failure) {
-                // log.info("Yadda yadda digest {}", node) ;
                 lastSync.addLastDigest(node, now);
             } else {
+                // log.info("Yadda yadda digest {}", node) ;
                 log.warn("Not updating last sync to digest for {}", node);
             }
         }
@@ -408,7 +408,6 @@ public class Synchronizer {
             // On the first run this *should* have page = 1
             // Then we increment for successive runs
             // When we fail, add a null object which serves as a "poison pill"
-            // log.info("{}", params);
             Call<? extends Response<T>> apply = get.apply(params);
             if (apply.request() != null) {
                 detail.setUrl(apply.request().url().toString());

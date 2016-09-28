@@ -9,13 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * @deprecated Will be removed by 2.0.0-RELEASE
  * Return a list of SyncViews from a result set
  *
  * Created by shake on 8/11/16.
  */
 @SuppressWarnings("WeakerAccess")
 @Deprecated
-public class SyncViewListHandler extends SyncViewHandler { // implements ResultSetHandler<List<SyncView>> {
+public class SyncViewListHandler extends SyncViewHandler {
 
     // @Override
     public List<SyncView> handle(ResultSet resultSet) throws SQLException {

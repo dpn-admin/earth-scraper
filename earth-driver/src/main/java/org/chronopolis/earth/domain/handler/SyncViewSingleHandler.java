@@ -6,12 +6,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
+ * @deprecated Will be removed by 2.0.0-RELEASE
  * Return a single SyncView from a result set
  *
  * Created by shake on 8/15/16.
  */
 @Deprecated
-public class SyncViewSingleHandler extends SyncViewHandler { // implements ResultSetHandler<SyncView> {
+public class SyncViewSingleHandler extends SyncViewHandler {
 
     // @Override
     public SyncView handle(ResultSet resultSet) throws SQLException {

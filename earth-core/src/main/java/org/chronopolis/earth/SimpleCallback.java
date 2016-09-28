@@ -36,7 +36,6 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
     @Override
     public void onResponse(Call<E> call, Response<E> response) {
         if (response.isSuccessful()) {
-            // TODO: HTTP {GET/POST/PUT/etc}
             log.debug("Successfully completed HTTP Call with response code {} - {} ",
                 response.code(),
                 response.message());

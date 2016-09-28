@@ -3,6 +3,8 @@ package org.chronopolis.earth;
 import java.util.List;
 
 /**
+ * @deprecated old. no longer used. slated for removal in 2.0.0-RELEASE
+ *
  * Created by shake on 11/13/14.
  */
 @Deprecated

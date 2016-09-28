@@ -14,9 +14,6 @@ public class LocalAPI {
     BalustradeTransfers transfersAPI;
     BalustradeMember memberAPI;
 
-    public LocalAPI() {
-    }
-
     public String getNode() {
         return node;
     }

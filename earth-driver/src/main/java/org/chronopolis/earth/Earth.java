@@ -65,10 +65,12 @@ public class Earth implements CommandLineRunner {
                     @Override
                     public void checkClientTrusted(
                             java.security.cert.X509Certificate[] certs, String authType) {
+                        // Needed for X509TrustManager
                     }
                     @Override
                     public void checkServerTrusted(
                             java.security.cert.X509Certificate[] certs, String authType) {
+                        // Needed for X509TrustManager
                     }
                 }
         };

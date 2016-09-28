@@ -7,6 +7,10 @@ package org.chronopolis.earth.api;
  */
 public class Version {
 
+    private Version() {
+        throw new IllegalAccessError("Not supported");
+    }
+
     final static String VERSION = "api-v2";
 
 }
