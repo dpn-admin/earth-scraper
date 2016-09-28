@@ -232,13 +232,16 @@ public class Synchronizer {
     /**
      * Persist a group of SyncViews
      *
-     * TODO: This probably isn't the best idiom to use
+     * TODO: This probably isn't the best idiom to use + should use batching properly
      *
-     * @param views
+     * @param views the SyncViews to save
      */
     void save(List<SyncView> views) {
         try (Session session = sessionFactory.openSession()) {
+            log.info("Saving {} views", views.size());
+            session.getTransaction().begin();
             views.forEach(session::persist);
+            session.getTransaction().commit();
         }
     }
 
