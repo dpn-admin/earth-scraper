@@ -1,5 +1,6 @@
 package org.chronopolis.earth.domain;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
@@ -29,7 +30,7 @@ public class SyncView {
     @Enumerated(EnumType.STRING)
     private SyncStatus status;
 
-    @OneToMany(fetch = FetchType.EAGER)
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<HttpDetail> httpDetails = new ArrayList<>();
 
     public Long getId() {
