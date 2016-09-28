@@ -8,7 +8,7 @@ html(lang="en")
           div.nav-wrapper
             a.brand-logo Status Overview
             ul#nav-mobile.right.hide-on-med-and-down
-              li: a(href="#") Home
+              li: a(href="/") Home
               li: a(href="/syncs") Syncs
               li: a(href="/replications") Replications
     div.container
@@ -25,7 +25,7 @@ html(lang="en")
           tbody
             each repl in replications
               tr
-                td=repl.replicationId
+                td=repl.id
                 td=repl.node
                 td=repl.received
                 td=repl.extracted
