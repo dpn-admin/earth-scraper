@@ -4,6 +4,8 @@ import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.domain.SyncView;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,6 +25,7 @@ import java.util.List;
 @Controller
 @SuppressWarnings("WeakerAccess")
 public class Sync {
+    private final Logger log = LoggerFactory.getLogger(Sync.class);
 
     SessionFactory factory;
 
@@ -38,29 +41,32 @@ public class Sync {
 
     @RequestMapping(value = "/replications")
     public String getReplications(Model model) {
-        Session session = factory.openSession();
-        session.beginTransaction();
-        List<ReplicationFlow> replications = session.createQuery("from ReplicationFlow", ReplicationFlow.class).list();
-        session.close();
+        List<ReplicationFlow> replications;
+        try (Session session = factory.openSession()) {
+            replications = session.createQuery("from ReplicationFlow", ReplicationFlow.class).list();
+        }
         model.addAttribute("replications", replications);
         return "replicate/index";
     }
 
     @RequestMapping(value = "/syncs", method = RequestMethod.GET)
     public String getSyncs(Model model) {
-        Session session = factory.openSession();
-        session.beginTransaction();
-        List<SyncView> views = session.createQuery("from SyncView", SyncView.class).list();
-        session.close();
+        List<SyncView> views;
+        try (Session session = factory.openSession()) {
+            views = session.createQuery("from SyncView", SyncView.class).list();
+            log.info("Found {} views to display", views.size());
+
+        }
         model.addAttribute("syncs", views);
         return "sync/index";
     }
 
     @RequestMapping(value = "/syncs/{id}", method = RequestMethod.GET)
     public String getSync(Model model, @PathVariable("id") Long id) {
-        Session session = factory.openSession();
-        session.beginTransaction();
-        SyncView view = session.find(SyncView.class, id);
+        SyncView view;
+        try (Session session = factory.openSession()) {
+            view = session.find(SyncView.class, id);
+        }
         model.addAttribute("sync", view);
         return "sync/sync";
     }
