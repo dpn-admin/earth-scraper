@@ -67,6 +67,11 @@ import java.util.stream.StreamSupport;
 public class Synchronizer {
 
     private static final Logger log = LoggerFactory.getLogger(Synchronizer.class);
+    static final String PAGE_PARAM = "page";
+    static final String NODE_PARAM = "node";
+    static final String FROM_PARAM = "from_node";
+    static final String AFTER_PARAM = "after";
+    static final String ADMIN_PARAM = "admin_node";
 
     final BagAPIs bagAPIs;
     final NodeAPIs nodeAPIs;
@@ -115,8 +120,8 @@ public class Synchronizer {
             Events remote = eventAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
-            params.put("node", node);
-            params.put("after", after);
+            params.put(NODE_PARAM, node);
+            params.put(AFTER_PARAM, after);
 
             log.info("[{}] syncing message_digests", node);
 
@@ -163,8 +168,8 @@ public class Synchronizer {
             Events remote = eventAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
-            params.put("node", node);
-            params.put("after", after);
+            params.put(NODE_PARAM, node);
+            params.put(AFTER_PARAM, after);
 
             log.info("[{}] syncing fixity_checks", node);
 
@@ -201,8 +206,8 @@ public class Synchronizer {
             Events remote = eventAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
-            params.put("node", node);
-            params.put("after", after);
+            params.put(NODE_PARAM, node);
+            params.put(AFTER_PARAM, after);
 
             log.info("[{}] syncing ingests", node);
 
@@ -273,8 +278,8 @@ public class Synchronizer {
             BalustradeTransfers remote = transferAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
-            params.put("from_node", node);
-            params.put("after", after);
+            params.put(FROM_PARAM, node);
+            params.put(AFTER_PARAM, after);
 
             log.info("[{}] syncing replications", node);
 
@@ -311,8 +316,8 @@ public class Synchronizer {
             BalustradeBag remote = apis.get(node);
 
             Map<String, String> params = new HashMap<>();
-            params.put("admin_node", node);
-            params.put("after", after);
+            params.put(ADMIN_PARAM, node);
+            params.put(AFTER_PARAM, after);
 
             log.info("[{}] syncing bags", node);
 
@@ -377,7 +382,7 @@ public class Synchronizer {
             this.view = view;
             this.params = params;
             this.results = new ArrayList<>();
-            this.params.put("page", String.valueOf(page));
+            this.params.put(PAGE_PARAM, String.valueOf(page));
             populate();
         }
 
@@ -427,7 +432,7 @@ public class Synchronizer {
 
                 // Increment our page and update our params
                 ++page;
-                params.put("page", String.valueOf(page));
+                params.put(PAGE_PARAM, String.valueOf(page));
             } catch (IOException e) {
                 log.warn("Error communicating with remote server", e);
                 count = -1;
