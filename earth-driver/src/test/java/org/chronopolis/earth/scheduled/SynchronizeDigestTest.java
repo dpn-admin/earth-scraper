@@ -1,5 +1,7 @@
 package org.chronopolis.earth.scheduled;
 
+import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Digest;
 import org.junit.Assert;
 import org.junit.Before;
@@ -37,15 +39,13 @@ public class SynchronizeDigestTest extends SynchronizerTest {
         when(remoteEvents.getDigests(anyMap())).thenReturn(new SuccessfulCall(responseWrapper(d)));
         when(localBag.createDigest(d.getBag(), d)).thenReturn(new SuccessfulCall<>(d));
 
-        synchronizer.readLastSync();
         synchronizer.syncDigests();
-
-        String lastString = synchronizer.lastSync.lastDigestSync(node);
-        ZonedDateTime last = ZonedDateTime.parse(lastString);
-        ZonedDateTime start = ZonedDateTime.parse(epoch);
-
         verify(localBag, times(1)).createDigest(d.getBag(), d);
-        Assert.assertTrue("LastSync was updated", last.isAfter(start));
+
+        LastSync lastSync = getLastSync(node, SyncType.DIGEST);
+        Assert.assertNotNull(lastSync);
+        ZonedDateTime last = lastSync.getTime();
+        Assert.assertTrue("LastSync was updated", last.isAfter(epoch));
     }
 
 }

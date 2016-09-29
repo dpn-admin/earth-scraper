@@ -1,5 +1,7 @@
 package org.chronopolis.earth.scheduled;
 
+import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.FixityCheck;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,16 +40,15 @@ public class SynchronizeFixityTest extends SynchronizerTest {
         when(remoteEvents.getFixityChecks(anyMap())).thenReturn(new SuccessfulCall(responseWrapper(f)));
         when(localEvents.createFixityCheck(f)).thenReturn(new SuccessfulCall<>(f));
 
-        synchronizer.readLastSync();
         synchronizer.syncFixities();
 
         verify(localEvents, times(1)).createFixityCheck(f);
 
-        String lastString = synchronizer.lastSync.lastFixitySync(node);
-        ZonedDateTime last = ZonedDateTime.parse(lastString);
-        ZonedDateTime start = ZonedDateTime.parse(epoch);
+        LastSync lastSync = getLastSync(node, SyncType.FIXITY);
+        Assert.assertNotNull(lastSync);
 
-        Assert.assertTrue("LastSync was updated", last.isAfter(start));
+        ZonedDateTime last = lastSync.getTime();
+        Assert.assertTrue("LastSync was updated", last.isAfter(epoch));
     }
 
 }

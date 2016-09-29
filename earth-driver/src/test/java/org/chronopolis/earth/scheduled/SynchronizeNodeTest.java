@@ -2,6 +2,8 @@ package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
+import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Node;
 import org.junit.Assert;
 import org.junit.Before;
@@ -49,12 +51,13 @@ public class SynchronizeNodeTest extends SynchronizerTest {
         when(remoteNode.getNode(n.getNamespace()))
                 .thenReturn(new SuccessfulCall<>(n));
 
-        synchronizer.readLastSync();
         synchronizer.syncNode();
         blockUnitShutdown();
-
         verify(remoteNode, times(1)).getNode(n.getNamespace());
-        Assert.assertNotEquals(epoch, synchronizer.lastSync.lastNodeSync(n.getNamespace()));
+
+        LastSync lastSync = getLastSync(node, SyncType.NODE);
+        Assert.assertNotNull(lastSync);
+        Assert.assertNotEquals(epoch, lastSync.getTime());
     }
 
 }

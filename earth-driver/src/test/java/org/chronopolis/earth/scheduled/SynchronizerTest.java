@@ -13,7 +13,10 @@ import org.chronopolis.earth.api.Events;
 import org.chronopolis.earth.api.LocalAPI;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Response;
+import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
@@ -29,7 +32,10 @@ import org.slf4j.LoggerFactory;
 import retrofit2.Call;
 import retrofit2.Callback;
 
+import javax.persistence.NoResultException;
 import java.io.IOException;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,7 +53,7 @@ public class SynchronizerTest {
 
     private static final Logger log = LoggerFactory.getLogger(SynchronizerTest.class);
 
-    final String epoch = "1970-01-01T00:00:00Z";
+    final ZonedDateTime epoch = ZonedDateTime.from(java.time.Instant.EPOCH.atZone(ZoneOffset.UTC));
     final String node = "test-node";
 
     @Mock BalustradeBag localBag;
@@ -95,7 +101,7 @@ public class SynchronizerTest {
         EventAPIs eventAPIs = new EventAPIs();
         eventAPIs.put(node, remoteEvents);
 
-        synchronizer = new Synchronizer(fmt, bagAPIs, transferAPIs, nodeAPIs, localAPI, eventAPIs, factory);
+        synchronizer = new Synchronizer(bagAPIs, transferAPIs, nodeAPIs, localAPI, eventAPIs, factory);
     }
 
     static <T> Response<T> responseWrapper(T t) {
@@ -110,6 +116,19 @@ public class SynchronizerTest {
     void blockUnitShutdown() throws InterruptedException {
         synchronizer.service.shutdown();
         synchronizer.service.awaitTermination(5, TimeUnit.MINUTES);
+    }
+
+    LastSync getLastSync(String node, SyncType type) {
+        try (Session session = factory.openSession()) {
+            return (LastSync) session.createQuery("select l from LastSync l where l.node = :node and l.type = :type")
+                    .setParameter("node", node)
+                    .setParameter("type", type)
+                    .getSingleResult();
+        } catch (NoResultException ne) {
+            return new LastSync()
+                    .setNode(node)
+                    .setType(type);
+        }
     }
 
     class SuccessfulCall<T> implements Call<T> {

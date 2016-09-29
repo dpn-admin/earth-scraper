@@ -14,6 +14,7 @@ import org.chronopolis.earth.api.LocalAPI;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.domain.HttpDetail;
+import org.chronopolis.earth.domain.LastSync;
 import org.chronopolis.earth.domain.SyncStatus;
 import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.domain.SyncView;
@@ -25,11 +26,8 @@ import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.chronopolis.earth.util.DetailEmitter;
-import org.chronopolis.earth.util.LastSync;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +38,9 @@ import org.springframework.stereotype.Component;
 import retrofit2.Call;
 
 import javax.annotation.Nullable;
+import javax.persistence.NoResultException;
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -78,19 +78,16 @@ public class Synchronizer {
     final LocalAPI localAPI;
     final EventAPIs eventAPIs;
     final TransferAPIs transferAPIs;
-    final DateTimeFormatter formatter;
     final SessionFactory sessionFactory;
 
-    LastSync lastSync;
     ListeningExecutorService service;
 
     @Autowired
-    public Synchronizer(DateTimeFormatter formatter, BagAPIs bagAPIs, TransferAPIs transferAPIs, NodeAPIs nodeAPIs, LocalAPI localAPI, EventAPIs eventAPIs, SessionFactory sessionFactory) {
+    public Synchronizer(BagAPIs bagAPIs, TransferAPIs transferAPIs, NodeAPIs nodeAPIs, LocalAPI localAPI, EventAPIs eventAPIs, SessionFactory sessionFactory) {
         this.bagAPIs = bagAPIs;
         this.nodeAPIs = nodeAPIs;
         this.localAPI = localAPI;
         this.eventAPIs = eventAPIs;
-        this.formatter = formatter;
         this.transferAPIs = transferAPIs;
         this.sessionFactory = sessionFactory;
     }
@@ -98,7 +95,6 @@ public class Synchronizer {
     @Scheduled(cron = "${earth.cron.sync:0 0 0 * * *}")
     public void synchronize() {
         // service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
-        readLastSync();
         // syncNode();
         syncBags();
         syncTransfers();
@@ -107,7 +103,6 @@ public class Synchronizer {
         syncFixities();
         syncDigests();
         // service.shutdown(); // shutdown the pool
-        writeLastSync(lastSync);
     }
 
     void syncDigests() {
@@ -115,8 +110,9 @@ public class Synchronizer {
         BalustradeBag local = localAPI.getBagAPI();
 
         for (String node : eventAPIs.getApiMap().keySet()) {
-            DateTime now = DateTime.now();
-            String after = lastSync.lastDigestSync(node);
+            ZonedDateTime now = ZonedDateTime.now();
+            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.DIGEST);
+            String after = last.getFormattedTime();
             Events remote = eventAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
@@ -148,14 +144,33 @@ public class Synchronizer {
 
             views.add(view);
             if (!failure) {
-                lastSync.addLastDigest(node, now);
+                // TODO: saveorupdate
+                last.setTime(now);
             } else {
-                // log.info("Yadda yadda digest {}", node) ;
                 log.warn("Not updating last sync to digest for {}", node);
             }
+
+            saveSync(last);
         }
 
         save(views);
+    }
+
+    private org.chronopolis.earth.domain.LastSync getLastSync(String node, SyncType type) {
+        org.chronopolis.earth.domain.LastSync last;
+        try (Session session = sessionFactory.openSession()) {
+            last = (org.chronopolis.earth.domain.LastSync) session.createQuery("select l from LastSync l where l.node = :node AND l.type = :type")
+                    .setParameter("node", node)
+                    .setParameter("type", type)
+                    .getSingleResult();
+        } catch (NoResultException ne) {
+            // Init last here. Do we want to save it as well though?
+            last = new org.chronopolis.earth.domain.LastSync();
+            last.setNode(node);
+            last.setType(type);
+        }
+
+        return last;
     }
 
     void syncFixities() {
@@ -163,8 +178,9 @@ public class Synchronizer {
         Events local = localAPI.getEventsAPI();
 
         for (String node : eventAPIs.getApiMap().keySet()) {
-            DateTime now = DateTime.now();
-            String after = lastSync.lastFixitySync(node);
+            ZonedDateTime now = ZonedDateTime.now();
+            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.FIXITY);
+            String after = last.getFormattedTime();
             Events remote = eventAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
@@ -187,10 +203,13 @@ public class Synchronizer {
 
             views.add(view);
             if (!failure) {
-                lastSync.addLastFixity(node, now); 
+                // TODO: saveorupdate
+                last.setTime(now);
             } else {
                 log.warn("Not updating last sync to digest for {}", node);
             }
+
+            saveSync(last);
         }
 
         save(views);
@@ -201,8 +220,9 @@ public class Synchronizer {
         Events local = localAPI.getEventsAPI();
 
         for (String node : eventAPIs.getApiMap().keySet()) {
-            DateTime now = DateTime.now();
-            String after = lastSync.lastDigestSync(node);
+            ZonedDateTime now = ZonedDateTime.now();
+            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.INGEST);
+            String after = last.getFormattedTime();
             Events remote = eventAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
@@ -225,10 +245,13 @@ public class Synchronizer {
 
             views.add(view);
             if (!failure) {
-                lastSync.addLastIngest(node, now);
+                // TODO: saveorupdate
+                last.setTime(now);
             } else {
                 log.warn("Not updating last sync to digest for {}", node);
             }
+
+            saveSync(last);
         }
 
         save(views);
@@ -250,31 +273,14 @@ public class Synchronizer {
         }
     }
 
-    void readLastSync() {
-        try {
-            lastSync = LastSync.read();
-        } catch (IOException e) {
-            log.error("Unable to read last sync!", e);
-            lastSync = new LastSync();
-        }
-    }
-
-    private void writeLastSync(LastSync sync) {
-        try {
-            log.debug("Writing last sync");
-            sync.write();
-        } catch (IOException e) {
-            log.error("Unable to write last sync!", e);
-        }
-    }
-
     void syncTransfers() {
         BalustradeTransfers local = localAPI.getTransfersAPI();
         List<SyncView> views = new ArrayList<>();
 
         for (String node : transferAPIs.getApiMap().keySet()) {
-            DateTime now = DateTime.now();
-            String after = lastSync.lastReplicationSync(node);
+            ZonedDateTime now = ZonedDateTime.now();
+            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.REPL);
+            String after = last.getFormattedTime();
             BalustradeTransfers remote = transferAPIs.getApiMap().get(node);
 
             Map<String, String> params = new HashMap<>();
@@ -296,11 +302,13 @@ public class Synchronizer {
 
             views.add(view);
             if (!failure) {
-                // log.info("Adding last sync to replication for {}", node);
-                lastSync.addLastReplication(node, now);
+                // TODO: saveorupdate
+                last.setTime(now);
             } else {
                 log.warn("Not updating last sync to replication for {}", node);
             }
+
+            saveSync(last);
         }
 
         save(views);
@@ -311,8 +319,9 @@ public class Synchronizer {
         Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
         List<SyncView> views = new ArrayList<>();
         for (String node : apis.keySet()) {
-            DateTime now = DateTime.now();
-            String after = lastSync.lastBagSync(node);
+            ZonedDateTime now = ZonedDateTime.now();
+            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.BAG);
+            String after = last.getFormattedTime();
             BalustradeBag remote = apis.get(node);
 
             Map<String, String> params = new HashMap<>();
@@ -333,14 +342,24 @@ public class Synchronizer {
 
             views.add(view);
             if (!failure) {
-                // log.info("Adding last sync to bags for {}", node);
-                lastSync.addLastBagSync(node, now);
+                // TODO: 9/28/16 saveorupdate
+                last.setTime(now);
             } else {
                 log.warn("Not updating last sync to bags for {}", node);
             }
+
+            saveSync(last);
         }
 
         save(views);
+    }
+
+    private void saveSync(LastSync last) {
+        try (Session session = sessionFactory.openSession()) {
+            session.getTransaction().begin();
+            session.saveOrUpdate(last);
+            session.getTransaction().commit();
+        }
     }
 
     // We'll probably want to split these out in to their own classes, but for now this is fine
@@ -529,7 +548,7 @@ public class Synchronizer {
         Map<String, BalustradeNode> apis = nodeAPIs.getApiMap();
         for (String node : apis.keySet()) {
             BalustradeNode api = apis.get(node);
-            DateTime now = DateTime.now();
+            ZonedDateTime now = ZonedDateTime.now();
 
             ListenableFuture<Node> submit = service.submit(() -> {
                 Call<Node> call = api.getNode(node);
@@ -545,7 +564,8 @@ public class Synchronizer {
                 @Override
                 public void onSuccess(@Nullable Node node) {
                     if (node != null) {
-                        lastSync.addLastNode(node.getNamespace(), now);
+                        // lastSync.addLastNode(node.getNamespace(), now);
+                        // will be replaced if we need to sync nodes
                     }
                 }
 

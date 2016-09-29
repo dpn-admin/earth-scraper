@@ -1,6 +1,8 @@
 package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableList;
+import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Ingest;
 import org.junit.Assert;
 import org.junit.Before;
@@ -39,15 +41,14 @@ public class SynchronizeIngestTest extends SynchronizerTest {
         when(remoteEvents.getIngests(anyMap())).thenReturn(new SuccessfulCall(responseWrapper(i)));
         when(localEvents.createIngest(i)).thenReturn(new SuccessfulCall<>(i));
 
-        synchronizer.readLastSync();
         synchronizer.syncIngests();
 
         verify(localEvents, times(1)).createIngest(i);
 
-        String lastString = synchronizer.lastSync.lastIngestSync(node);
-        ZonedDateTime last = ZonedDateTime.parse(lastString);
-        ZonedDateTime start = ZonedDateTime.parse(epoch);
+        LastSync lastSync = getLastSync(node, SyncType.INGEST);
+        Assert.assertNotNull(lastSync);
 
-        Assert.assertTrue("LastSync was updated", last.isAfter(start));
+        ZonedDateTime last = lastSync.getTime();
+        Assert.assertTrue("LastSync was updated", last.isAfter(epoch));
     }
 }
