@@ -17,10 +17,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * TODO: Move to sqlitedb
+ * @deprecated Being replaced in favor of the @entity version
  *
  * Created by shake on 2/22/16.
  */
+@Deprecated
 public class LastSync {
 
     // We might want to consider changing this to a List[NodeSync]
