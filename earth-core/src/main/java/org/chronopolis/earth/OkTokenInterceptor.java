@@ -14,7 +14,7 @@ import java.io.IOException;
  */
 public class OkTokenInterceptor implements Interceptor {
 
-    private final static String AUTHORIZATION = "Authorization";
+    private static final String AUTHORIZATION = "Authorization";
     private final String token;
 
     public OkTokenInterceptor(String token) {
