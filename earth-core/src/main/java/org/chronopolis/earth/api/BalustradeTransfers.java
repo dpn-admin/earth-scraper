@@ -6,7 +6,6 @@ import org.chronopolis.earth.models.Restore;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
-import retrofit2.http.PATCH;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Path;
@@ -36,9 +35,6 @@ public interface BalustradeTransfers {
     @PUT(VERSION + "/replicate/{id}/")
     Call<Replication> updateReplication(@Path("id") String id, @Body Replication replication);
 
-    @PATCH(VERSION + "/replicate/{id}/")
-    Call<Replication> patchReplication(@Path("id") String id, @Body Replication replication);
-
     // Restores
     @GET(VERSION + "/restore/")
     Call<Response<Restore>> getRestores(@QueryMap Map<String, String> params);
@@ -51,8 +47,5 @@ public interface BalustradeTransfers {
 
     @PUT(VERSION + "/restore/{id}/")
     Call<Restore> updateRestore(@Path("id") String id, @Body Restore replication);
-
-    @PATCH(VERSION + "/restore/{id}/")
-    Call<Restore> patchRestore(@Path("id") String id, @Body Restore replication);
 
 }
