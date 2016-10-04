@@ -1,8 +1,5 @@
 package org.chronopolis.earth.scheduled;
 
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
@@ -37,7 +34,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import retrofit2.Call;
 
-import javax.annotation.Nullable;
 import javax.persistence.NoResultException;
 import java.io.IOException;
 import java.time.ZonedDateTime;
@@ -83,7 +79,12 @@ public class Synchronizer {
     ListeningExecutorService service;
 
     @Autowired
-    public Synchronizer(BagAPIs bagAPIs, TransferAPIs transferAPIs, NodeAPIs nodeAPIs, LocalAPI localAPI, EventAPIs eventAPIs, SessionFactory sessionFactory) {
+    public Synchronizer(BagAPIs bagAPIs,
+                        TransferAPIs transferAPIs,
+                        NodeAPIs nodeAPIs,
+                        LocalAPI localAPI,
+                        EventAPIs eventAPIs,
+                        SessionFactory sessionFactory) {
         this.bagAPIs = bagAPIs;
         this.nodeAPIs = nodeAPIs;
         this.localAPI = localAPI;
@@ -94,7 +95,7 @@ public class Synchronizer {
 
     @Scheduled(cron = "${earth.cron.sync:0 0 0 * * *}")
     public void synchronize() {
-        // service = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(4));
+        // leave this commented out for now, not sure if we want to sync nodes or not
         // syncNode();
         syncBags();
         syncTransfers();
@@ -102,7 +103,6 @@ public class Synchronizer {
         syncIngests();
         syncFixities();
         syncDigests();
-        // service.shutdown(); // shutdown the pool
     }
 
     void syncDigests() {
@@ -546,40 +546,47 @@ public class Synchronizer {
      */
     void syncNode() {
         Map<String, BalustradeNode> apis = nodeAPIs.getApiMap();
-        for (String node : apis.keySet()) {
-            BalustradeNode api = apis.get(node);
-            ZonedDateTime now = ZonedDateTime.now();
+        BalustradeNode local = localAPI.getNodeAPI();
 
-            ListenableFuture<Node> submit = service.submit(() -> {
-                Call<Node> call = api.getNode(node);
-                retrofit2.Response<Node> response = call.execute();
-                if (response.isSuccessful()) {
-                    return response.body();
+        for (Map.Entry<String, BalustradeNode> entry : apis.entrySet()) {
+            boolean failure = false;
+            String node = entry.getKey();
+            BalustradeNode remote = entry.getValue();
+            log.info("[{}] syncing node", node);
+
+            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.NODE);
+
+            SyncView view = new SyncView();
+            view.setHost(node);
+            view.setType(SyncType.NODE);
+            view.setStatus(SyncStatus.SUCCESS);
+
+            Call<Node> call = remote.getNode(node);
+            try {
+                retrofit2.Response<Node> execute = call.execute();
+                Node update = execute.body();
+                if (update.getUpdatedAt().isAfter(last.getTime())) {
+                    Call<Node> updateCall = local.updateNode(node, update);
+                    retrofit2.Response<Node> uExecute = updateCall.execute();
+
+                    // check if we didn't succeed
+                    failure = !uExecute.isSuccessful();
                 }
+            } catch (IOException e) {
+                log.error("Error syncing node {}", node, e);
+                failure = true;
+            }
 
-                throw new SyncException(response.errorBody().string());
-            });
+            if (!failure) {
+                last.setTime(ZonedDateTime.now());
+            } else {
+                log.warn("Not updating last sync to digest for {}", node);
+            }
 
-            Futures.addCallback(submit, new FutureCallback<Node>() {
-                @Override
-                public void onSuccess(@Nullable Node node) {
-                    if (node != null) {
-                        // lastSync.addLastNode(node.getNamespace(), now);
-                        // will be replaced if we need to sync nodes
-                    }
-                }
-
-                @Override
-                public void onFailure(Throwable throwable) {
-                    log.error("Error syncing node", throwable);
-                }
-            });
+            saveSync(last);
         }
+
+        // save(views);
     }
 
-    class SyncException extends Exception {
-        public SyncException(String s) {
-            super(s);
-        }
-    }
 }

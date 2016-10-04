@@ -50,6 +50,8 @@ public class SynchronizeNodeTest extends SynchronizerTest {
 
         when(remoteNode.getNode(n.getNamespace()))
                 .thenReturn(new SuccessfulCall<>(n));
+        when(localNode.updateNode(n.getNamespace(), n))
+                .thenReturn(new SuccessfulCall<>(n));
 
         synchronizer.syncNode();
         blockUnitShutdown();
