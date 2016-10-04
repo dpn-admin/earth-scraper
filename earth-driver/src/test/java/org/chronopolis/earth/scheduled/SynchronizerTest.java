@@ -69,16 +69,15 @@ public class SynchronizerTest {
     @Mock Events remoteEvents;
 
     Synchronizer synchronizer;
-    static SessionFactory factory;
+    SessionFactory factory;
+    static StandardServiceRegistry registry;
 
     @BeforeClass
     public static void setupDB() {
-        StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
+        registry = new StandardServiceRegistryBuilder()
                 .configure()
                 .applySetting("hibernate.connection.url", "jdbc:h2:mem")
                 .build();
-
-        factory = new MetadataSources(registry).buildMetadata().buildSessionFactory();
     }
 
 
@@ -101,6 +100,9 @@ public class SynchronizerTest {
         EventAPIs eventAPIs = new EventAPIs();
         eventAPIs.put(node, remoteEvents);
 
+        // Probably not the best thing, but this works for now. We want the transactions
+        // to roll back between tests, and this is the easiest way to do it.
+        factory = new MetadataSources(registry).buildMetadata().buildSessionFactory();
         synchronizer = new Synchronizer(bagAPIs, transferAPIs, nodeAPIs, localAPI, eventAPIs, factory);
     }
 
