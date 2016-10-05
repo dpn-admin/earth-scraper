@@ -54,8 +54,8 @@ public class Sync {
     public String getSyncs(Model model) {
         List<SyncView> views;
         try (Session session = factory.openSession()) {
-            views = session.createQuery("from SyncView", SyncView.class).list();
-            // log.info("Found {} views to display", views.size());
+            // todo limit on this?
+            views = session.createQuery("from SyncView order by id desc", SyncView.class).list();
         }
         model.addAttribute("syncs", views);
         return "sync/index";
