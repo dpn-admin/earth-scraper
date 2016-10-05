@@ -3,6 +3,7 @@ package org.chronopolis.earth.domain;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Lob;
 
 /**
  * Information regarding http calls
@@ -18,11 +19,18 @@ public class HttpDetail {
     Long id;
 
     String url;
-    String requestBody;
+    int responseCode;
     String requestMethod;
 
+    @Lob
+    String requestBody;
+
+    @Lob
     String responseBody;
-    int responseCode = -1;
+
+    public HttpDetail() {
+        responseCode = -1;
+    }
 
     public Long getId() {
         return id;
