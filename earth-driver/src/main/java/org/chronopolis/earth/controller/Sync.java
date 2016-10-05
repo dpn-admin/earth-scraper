@@ -2,6 +2,7 @@ package org.chronopolis.earth.controller;
 
 import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.domain.SyncView;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.slf4j.Logger;
@@ -65,6 +66,7 @@ public class Sync {
         SyncView view;
         try (Session session = factory.openSession()) {
             view = session.find(SyncView.class, id);
+            Hibernate.initialize(view.getHttpDetails());
         }
         model.addAttribute("sync", view);
         return "sync/sync";
