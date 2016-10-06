@@ -172,13 +172,6 @@ public class Downloader {
             flow = new ReplicationFlow();
             flow.setId(transfer.getReplicationId());
             flow.setNode(transfer.getFromNode());
-        } else {
-            log.info("found replication flow for {}", transfer.getReplicationId());
-            log.info("transferred? {}", flow.isReceived());
-            log.info("extracted? {}", flow.isExtracted());
-            log.info("validated? {}", flow.isValidated());
-            log.info("pushed? {}", flow.isPushed());
-
         }
 
         return flow;

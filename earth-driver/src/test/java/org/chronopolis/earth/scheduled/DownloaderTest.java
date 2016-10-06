@@ -77,8 +77,6 @@ public class DownloaderTest {
         URL resources = ClassLoader.getSystemClassLoader().getResource("");
         bagLink = Paths.get(resources.toURI()).resolve("tar");
         bagExtracted = Paths.get(resources.toURI()).resolve("stage");
-
-
     }
 
     void saveNewFlow(Replication r, boolean extracted, boolean received, boolean validated, boolean pushed) {
