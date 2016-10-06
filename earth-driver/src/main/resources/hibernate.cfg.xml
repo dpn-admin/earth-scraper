@@ -15,7 +15,8 @@
     <!-- Annotated classes -->
     <mapping class="org.chronopolis.earth.domain.HttpDetail"/>
     <mapping class="org.chronopolis.earth.domain.ReplicationFlow"/>
-    <mapping class="org.chronopolis.earth.domain.SyncView"/>
+    <mapping class="org.chronopolis.earth.domain.Sync"/>
+    <mapping class="org.chronopolis.earth.domain.SyncOp"/>
     <mapping class="org.chronopolis.earth.domain.LastSync"/>
   </session-factory>
 </hibernate-configuration>
