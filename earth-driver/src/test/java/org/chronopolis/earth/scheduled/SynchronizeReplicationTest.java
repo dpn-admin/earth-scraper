@@ -3,6 +3,7 @@ package org.chronopolis.earth.scheduled;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
 import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Replication;
 import org.junit.Assert;
@@ -76,7 +77,7 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(localTransfer.updateReplication(replication.getReplicationId(), replication))
                 .thenReturn(new SuccessfulCall<>(replication));
 
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 1, 0, 1);
@@ -92,7 +93,7 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(remoteTransfer.getReplications(params))
                 .thenReturn(new ExceptedCall<>(responseWrapper(replication)));
 
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 0, 0, 0);
@@ -108,7 +109,7 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(remoteTransfer.getReplications(params))
                 .thenReturn(new FailedCall<>(responseWrapper(replication)));
 
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 0, 0, 0);
@@ -128,7 +129,7 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(localTransfer.createReplication(replication))
                 .thenReturn(new ExceptedCall<>(replication));
 
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 1, 1, 0);
@@ -148,7 +149,7 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(localTransfer.updateReplication(replication.getReplicationId(), replication))
                 .thenReturn(new FailedCall<>(replication));
 
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 1, 0, 1);

@@ -3,6 +3,7 @@ package org.chronopolis.earth.scheduled;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
 import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.SumResponse;
@@ -105,7 +106,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
         when(localBag.updateBag(b3.getUuid(), b3))
                 .thenReturn(new SuccessfulCall<>(b3));
 
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
         verify(localBag, times(3)).getBag(any());
         // TODO: Verify our last sync
@@ -123,7 +124,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
                 .thenReturn(new SuccessfulCall<>(bag));
         when(localBag.updateBag(bag.getUuid(), bag))
                 .thenReturn(new SuccessfulCall<>(bag));
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
         verifyBagMocks(1, 1, 0, 1);
         LastSync lastSync = getLastSync(node, SyncType.BAG);
@@ -138,7 +139,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
     @Test
     public void testBagRemoteException() throws InterruptedException {
         when(remoteBag.getBags(params)).thenReturn(new ExceptedCall<>(responseRapper(bag)));
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
         verifyBagMocks(1, 0, 0, 0);
         LastSync lastSync = getLastSync(node, SyncType.BAG);
@@ -153,7 +154,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
     @Test
     public void testBagRemoteFailure() throws InterruptedException {
         when(remoteBag.getBags(params)).thenReturn(new FailedCall<>(responseRapper(bag)));
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
 
         verifyBagMocks(1, 0, 0, 0);
@@ -173,7 +174,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
                 .thenReturn(new ExceptedCall<>(bag));
         when(localBag.createBag(bag))
                 .thenReturn(new ExceptedCall<>(bag));
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
 
         verifyBagMocks(1, 1, 1, 0);
@@ -193,7 +194,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
                 .thenReturn(new SuccessfulCall<>(bag));
         when(localBag.updateBag(bag.getUuid(), bag))
                 .thenReturn(new FailedCall<>(bag));
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
 
         verifyBagMocks(1, 1, 0, 1);

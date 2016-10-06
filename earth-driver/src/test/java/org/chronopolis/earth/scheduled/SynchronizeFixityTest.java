@@ -1,6 +1,7 @@
 package org.chronopolis.earth.scheduled;
 
 import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
 import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.FixityCheck;
 import org.junit.Assert;
@@ -40,7 +41,7 @@ public class SynchronizeFixityTest extends SynchronizerTest {
         when(remoteEvents.getFixityChecks(anyMap())).thenReturn(new SuccessfulCall(responseWrapper(f)));
         when(localEvents.createFixityCheck(f)).thenReturn(new SuccessfulCall<>(f));
 
-        synchronizer.syncFixities();
+        synchronizer.syncFixities(remoteEvents, node, new Sync());
 
         verify(localEvents, times(1)).createFixityCheck(f);
 

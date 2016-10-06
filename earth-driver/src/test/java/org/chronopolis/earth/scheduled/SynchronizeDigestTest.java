@@ -1,6 +1,7 @@
 package org.chronopolis.earth.scheduled;
 
 import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
 import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Digest;
 import org.junit.Assert;
@@ -39,7 +40,7 @@ public class SynchronizeDigestTest extends SynchronizerTest {
         when(remoteEvents.getDigests(anyMap())).thenReturn(new SuccessfulCall(responseWrapper(d)));
         when(localBag.createDigest(d.getBag(), d)).thenReturn(new SuccessfulCall<>(d));
 
-        synchronizer.syncDigests();
+        synchronizer.syncDigests(remoteEvents, node, new Sync());
         verify(localBag, times(1)).createDigest(d.getBag(), d);
 
         LastSync lastSync = getLastSync(node, SyncType.DIGEST);

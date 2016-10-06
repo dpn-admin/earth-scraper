@@ -2,6 +2,7 @@ package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableList;
 import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
 import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Ingest;
 import org.junit.Assert;
@@ -41,7 +42,7 @@ public class SynchronizeIngestTest extends SynchronizerTest {
         when(remoteEvents.getIngests(anyMap())).thenReturn(new SuccessfulCall(responseWrapper(i)));
         when(localEvents.createIngest(i)).thenReturn(new SuccessfulCall<>(i));
 
-        synchronizer.syncIngests();
+        synchronizer.syncIngests(remoteEvents, node, new Sync());
 
         verify(localEvents, times(1)).createIngest(i);
 

@@ -12,9 +12,10 @@ import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.domain.HttpDetail;
 import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
+import org.chronopolis.earth.domain.SyncOp;
 import org.chronopolis.earth.domain.SyncStatus;
 import org.chronopolis.earth.domain.SyncType;
-import org.chronopolis.earth.domain.SyncView;
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Digest;
 import org.chronopolis.earth.models.FixityCheck;
@@ -53,7 +54,7 @@ import java.util.stream.StreamSupport;
  * Functions to synchronize registry data
  * TODO: We still have a lot of boilerplate, maybe we can cut down on it somehow
  * TODO: ZonedDateTime
- *
+ * <p>
  * Created by shake on 3/31/15.
  */
 @Component
@@ -96,66 +97,253 @@ public class Synchronizer {
     @Scheduled(cron = "${earth.cron.sync:0 0 0 * * *}")
     public void synchronize() {
         // leave this commented out for now, not sure if we want to sync nodes or not
-        // syncNode();
-        syncBags();
-        syncTransfers();
-        // events
-        syncIngests();
-        syncFixities();
-        syncDigests();
-    }
+        for (Map.Entry<String, BalustradeBag> entry : bagAPIs.getApiMap().entrySet()) {
+            String node = entry.getKey();
+            Sync sync = new Sync().setHost(node);
+            BalustradeBag bags = entry.getValue();
+            BalustradeNode nodes = nodeAPIs.getApiMap().get(node);
+            BalustradeTransfers transfers = transferAPIs.getApiMap().get(node);
+            Events events = eventAPIs.getApiMap().get(node);
 
-    void syncDigests() {
-        List<SyncView> views = new ArrayList<>();
-        BalustradeBag local = localAPI.getBagAPI();
+            syncDigests(events, node, sync);
+            syncBags(bags, node, sync);
+            syncTransfers(transfers, node, sync);
+            syncIngests(events, node, sync);
+            syncFixities(events, node, sync);
+            syncNode(nodes, node, sync);
 
-        for (String node : eventAPIs.getApiMap().keySet()) {
-            ZonedDateTime now = ZonedDateTime.now();
-            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.DIGEST);
-            String after = last.getFormattedTime();
-            Events remote = eventAPIs.getApiMap().get(node);
-
-            Map<String, String> params = new HashMap<>();
-            params.put(NODE_PARAM, node);
-            params.put(AFTER_PARAM, after);
-
-            log.info("[{}] syncing message_digests", node);
-
-            SyncView view = new SyncView();
-            view.setHost(node);
-            view.setType(SyncType.DIGEST);
-            view.setStatus(SyncStatus.SUCCESS);
-
-            PageIterable<Digest> it = new PageIterable<>(params, remote::getDigests, view);
-            // Here we actually need a BiFunction for the create, so just do it in the map
-            boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(o -> o.map(d -> {
-                        DetailEmitter<Digest> emitter = new DetailEmitter<>();
-                        Call<Digest> create = local.createDigest(d.getBag(), d);
-                        create.enqueue(emitter);
-                        view.addHttpDetail(emitter.emit());
-                        if (!emitter.getResponse().isPresent()) {
-                            view.setStatus(SyncStatus.FAIL_LOCAL);
-                        }
-
-                        return emitter.getResponse().isPresent();
-                    }))
-                    .anyMatch(p -> !p.isPresent() || !p.get());
-
-            views.add(view);
-            if (!failure) {
-                // TODO: saveorupdate
-                last.setTime(now);
-            } else {
-                log.warn("Not updating last sync to digest for {}", node);
-            }
-
-            saveSync(last);
+            sync.updateStatus();
+            save(sync);
         }
 
-        save(views);
+        // syncNode();
+        // syncBags();
+        // syncTransfers();
+        // events
+        // syncIngests();
+        // syncFixities();
+        // syncDigests();
     }
 
+
+    void syncFixities(Events remote, String node, Sync sync) {
+        Events local = localAPI.getEventsAPI();
+        ZonedDateTime now = ZonedDateTime.now();
+        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.FIXITY);
+        String after = last.getFormattedTime();
+
+        Map<String, String> params = new HashMap<>();
+        params.put(NODE_PARAM, node);
+        params.put(AFTER_PARAM, after);
+
+        log.info("[{}] syncing fixity_checks", node);
+
+        SyncOp op = new SyncOp().setParent(sync)
+                .setType(SyncType.FIXITY)
+                .setStatus(SyncStatus.SUCCESS);
+
+        PageIterable<FixityCheck> it = new PageIterable<>(params, remote::getFixityChecks, op);
+
+        boolean failure = StreamSupport.stream(it.spliterator(), false)
+                .map(o -> o.map(f -> syncImmutable(local::createFixityCheck, f, op)))
+                .anyMatch(p -> !p.isPresent() || !p.get());
+
+        sync.addOp(op);
+        if (!failure) {
+            last.setTime(now);
+        } else {
+            log.warn("Not updating last sync to digest for {}", node);
+        }
+
+        saveSync(last);
+    }
+
+    void syncIngests(Events remote, String node, Sync sync) {
+        Events local = localAPI.getEventsAPI();
+        ZonedDateTime now = ZonedDateTime.now();
+        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.INGEST);
+        String after = last.getFormattedTime();
+
+        Map<String, String> params = new HashMap<>();
+        params.put(NODE_PARAM, node);
+        params.put(AFTER_PARAM, after);
+
+        log.info("[{}] syncing ingests", node);
+
+        SyncOp op = new SyncOp().setParent(sync)
+                .setType(SyncType.INGEST)
+                .setStatus(SyncStatus.SUCCESS);
+
+        PageIterable<Ingest> it = new PageIterable<>(params, remote::getIngests, op);
+
+        // TODO: lastSync
+        boolean failure = StreamSupport.stream(it.spliterator(), false)
+                .map(o -> o.map(i -> syncImmutable(local::createIngest, i, op)))
+                .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
+
+        sync.addOp(op);
+        if (!failure) {
+            last.setTime(now);
+        } else {
+            log.warn("Not updating last sync to digest for {}", node);
+        }
+
+        saveSync(last);
+    }
+
+    void syncTransfers(BalustradeTransfers remote, String node, Sync sync) {
+        BalustradeTransfers local = localAPI.getTransfersAPI();
+        ZonedDateTime now = ZonedDateTime.now();
+        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.REPL);
+        String after = last.getFormattedTime();
+
+        Map<String, String> params = new HashMap<>();
+        params.put(FROM_PARAM, node);
+        params.put(AFTER_PARAM, after);
+
+        log.info("[{}] syncing replications", node);
+
+        SyncOp op = new SyncOp().setParent(sync)
+                .setType(SyncType.REPL)
+                .setStatus(SyncStatus.SUCCESS);
+
+        PageIterable<Replication> it = new PageIterable<>(params, remote::getReplications, op);
+        // We may be able to use a partially applied function here (and below), but it's not too big of a deal
+        boolean failure = StreamSupport.stream(it.spliterator(), false)
+                .map(o -> o.map(r -> syncLocal(local::getReplication, local::createReplication, local::updateReplication, r, r.getReplicationId(), op)))
+                .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
+
+        sync.addOp(op);
+        if (!failure) {
+            last.setTime(now);
+        } else {
+            log.warn("Not updating last sync to replication for {}", node);
+        }
+
+        saveSync(last);
+    }
+
+    void syncBags(BalustradeBag remote, String node, Sync sync) {
+        BalustradeBag local = localAPI.getBagAPI();
+        ZonedDateTime now = ZonedDateTime.now();
+        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.BAG);
+        String after = last.getFormattedTime();
+
+        Map<String, String> params = new HashMap<>();
+        params.put(ADMIN_PARAM, node);
+        params.put(AFTER_PARAM, after);
+
+        log.info("[{}] syncing bags", node);
+
+        SyncOp op = new SyncOp().setParent(sync)
+                .setType(SyncType.BAG)
+                .setStatus(SyncStatus.SUCCESS);
+
+        PageIterable<Bag> it = new PageIterable<>(params, remote::getBags, op);
+        boolean failure = StreamSupport.stream(it.spliterator(), false)
+                .map(f -> f.map(b -> syncLocal(local::getBag, local::createBag, local::updateBag, b, b.getUuid(), op)))
+                .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
+
+        sync.addOp(op);
+        if (!failure) {
+            last.setTime(now);
+        } else {
+            log.warn("Not updating last sync to bags for {}", node);
+        }
+
+        saveSync(last);
+    }
+
+    void syncNode(BalustradeNode remote, String node, Sync sync) {
+        BalustradeNode local = localAPI.getNodeAPI();
+        boolean failure = false;
+        log.info("[{}] syncing node", node);
+
+        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.NODE);
+
+        SyncOp op = new SyncOp().setParent(sync)
+                .setType(SyncType.NODE)
+                .setStatus(SyncStatus.SUCCESS);
+
+        Call<Node> call = remote.getNode(node);
+        try {
+            retrofit2.Response<Node> execute = call.execute();
+            Node update = execute.body();
+            if (update.getUpdatedAt().isAfter(last.getTime())) {
+                Call<Node> updateCall = local.updateNode(node, update);
+                retrofit2.Response<Node> uExecute = updateCall.execute();
+
+                // check if we didn't succeed
+                failure = !uExecute.isSuccessful();
+            }
+        } catch (IOException e) {
+            log.error("Error syncing node {}", node, e);
+            failure = true;
+        }
+
+        if (!failure) {
+            last.setTime(ZonedDateTime.now());
+        } else {
+            log.warn("Not updating last sync to digest for {}", node);
+        }
+
+        saveSync(last);
+    }
+
+    void syncDigests(Events remote, String node, Sync sync) {
+        BalustradeBag local = localAPI.getBagAPI();
+        ZonedDateTime now = ZonedDateTime.now();
+
+        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.DIGEST);
+        String after = last.getFormattedTime();
+
+        Map<String, String> params = new HashMap<>();
+        params.put(NODE_PARAM, node);
+        params.put(AFTER_PARAM, after);
+
+        log.info("[{}] syncing message_digests", node);
+
+        SyncOp op = new SyncOp().setParent(sync)
+                .setType(SyncType.DIGEST)
+                .setStatus(SyncStatus.SUCCESS);
+
+        PageIterable<Digest> it = new PageIterable<>(params, remote::getDigests, op);
+        // Here we actually need a BiFunction for the create, so just do it in the map
+        boolean failure = StreamSupport.stream(it.spliterator(), false)
+                .map(o -> o.map(d -> {
+                    DetailEmitter<Digest> emitter = new DetailEmitter<>();
+                    Call<Digest> create = local.createDigest(d.getBag(), d);
+                    create.enqueue(emitter);
+                    op.addDetail(emitter.emit());
+                    if (!emitter.getResponse().isPresent()) {
+                        op.setStatus(SyncStatus.FAIL_LOCAL);
+                    }
+
+                    return emitter.getResponse().isPresent();
+                }))
+                .anyMatch(p -> !p.isPresent() || !p.get());
+
+        sync.addOp(op);
+        if (!failure) {
+            // TODO: saveorupdate
+            last.setTime(now);
+        } else {
+            log.warn("Not updating last sync to digest for {}", node);
+        }
+
+        saveSync(last);
+    }
+
+    // Helper fns
+
+    /**
+     * Helper function to get the last sync for a certain operation
+     * or create it if it does not exist
+     *
+     * @param node The node we're syncing from
+     * @param type The type of sync we're doing
+     * @return the last sync of the node + type
+     */
     private org.chronopolis.earth.domain.LastSync getLastSync(String node, SyncType type) {
         org.chronopolis.earth.domain.LastSync last;
         try (Session session = sessionFactory.openSession()) {
@@ -173,185 +361,34 @@ public class Synchronizer {
         return last;
     }
 
-    void syncFixities() {
-        List<SyncView> views = new ArrayList<>();
-        Events local = localAPI.getEventsAPI();
-
-        for (String node : eventAPIs.getApiMap().keySet()) {
-            ZonedDateTime now = ZonedDateTime.now();
-            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.FIXITY);
-            String after = last.getFormattedTime();
-            Events remote = eventAPIs.getApiMap().get(node);
-
-            Map<String, String> params = new HashMap<>();
-            params.put(NODE_PARAM, node);
-            params.put(AFTER_PARAM, after);
-
-            log.info("[{}] syncing fixity_checks", node);
-
-            SyncView view = new SyncView();
-            view.setHost(node);
-            view.setType(SyncType.FIXITY);
-            view.setStatus(SyncStatus.SUCCESS);
-
-            PageIterable<FixityCheck> it = new PageIterable<>(params, remote::getFixityChecks, view);
-
-            // TODO: lastSync
-            boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(o -> o.map(f -> syncImmutable(local::createFixityCheck, f, view)))
-                    .anyMatch(p -> !p.isPresent() || !p.get());
-
-            views.add(view);
-            if (!failure) {
-                // TODO: saveorupdate
-                last.setTime(now);
-            } else {
-                log.warn("Not updating last sync to digest for {}", node);
-            }
-
-            saveSync(last);
+    /**
+     * Persist a single sync object
+     *
+     * @param sync the sync to persist
+     */
+    private void save(Sync sync) {
+        try (Session session = sessionFactory.openSession()) {
+            session.getTransaction().begin();
+            session.persist(sync);
+            session.getTransaction().commit();
         }
-
-        save(views);
     }
 
-    void syncIngests() {
-        List<SyncView> views = new ArrayList<>();
-        Events local = localAPI.getEventsAPI();
-
-        for (String node : eventAPIs.getApiMap().keySet()) {
-            ZonedDateTime now = ZonedDateTime.now();
-            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.INGEST);
-            String after = last.getFormattedTime();
-            Events remote = eventAPIs.getApiMap().get(node);
-
-            Map<String, String> params = new HashMap<>();
-            params.put(NODE_PARAM, node);
-            params.put(AFTER_PARAM, after);
-
-            log.info("[{}] syncing ingests", node);
-
-            SyncView view = new SyncView();
-            view.setHost(node);
-            view.setType(SyncType.INGEST);
-            view.setStatus(SyncStatus.SUCCESS);
-
-            PageIterable<Ingest> it = new PageIterable<>(params, remote::getIngests, view);
-
-            // TODO: lastSync
-            boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(o -> o.map(i -> syncImmutable(local::createIngest, i, view)))
-                    .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
-
-            views.add(view);
-            if (!failure) {
-                // TODO: saveorupdate
-                last.setTime(now);
-            } else {
-                log.warn("Not updating last sync to digest for {}", node);
-            }
-
-            saveSync(last);
-        }
-
-        save(views);
-    }
 
     /**
      * Persist a group of SyncViews
-     *
+     * <p>
      * TODO: This probably isn't the best idiom to use + should use batching properly
      *
      * @param views the SyncViews to save
      */
-    void save(List<SyncView> views) {
+    void save(List<SyncOp> views) {
         try (Session session = sessionFactory.openSession()) {
             log.info("Saving {} views", views.size());
             session.getTransaction().begin();
             views.forEach(session::persist);
             session.getTransaction().commit();
         }
-    }
-
-    void syncTransfers() {
-        BalustradeTransfers local = localAPI.getTransfersAPI();
-        List<SyncView> views = new ArrayList<>();
-
-        for (String node : transferAPIs.getApiMap().keySet()) {
-            ZonedDateTime now = ZonedDateTime.now();
-            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.REPL);
-            String after = last.getFormattedTime();
-            BalustradeTransfers remote = transferAPIs.getApiMap().get(node);
-
-            Map<String, String> params = new HashMap<>();
-            params.put(FROM_PARAM, node);
-            params.put(AFTER_PARAM, after);
-
-            log.info("[{}] syncing replications", node);
-
-            SyncView view = new SyncView();
-            view.setHost(node);
-            view.setType(SyncType.REPL);
-            view.setStatus(SyncStatus.SUCCESS);
-
-            PageIterable<Replication> it = new PageIterable<>(params, remote::getReplications, view);
-            // We may be able to use a partially applied function here (and below), but it's not too big of a deal
-            boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(o -> o.map(r -> syncLocal(local::getReplication, local::createReplication, local::updateReplication, r, r.getReplicationId(), view)))
-                    .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
-
-            views.add(view);
-            if (!failure) {
-                // TODO: saveorupdate
-                last.setTime(now);
-            } else {
-                log.warn("Not updating last sync to replication for {}", node);
-            }
-
-            saveSync(last);
-        }
-
-        save(views);
-    }
-
-    void syncBags() {
-        BalustradeBag local = localAPI.getBagAPI();
-        Map<String, BalustradeBag> apis = bagAPIs.getApiMap();
-        List<SyncView> views = new ArrayList<>();
-        for (String node : apis.keySet()) {
-            ZonedDateTime now = ZonedDateTime.now();
-            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.BAG);
-            String after = last.getFormattedTime();
-            BalustradeBag remote = apis.get(node);
-
-            Map<String, String> params = new HashMap<>();
-            params.put(ADMIN_PARAM, node);
-            params.put(AFTER_PARAM, after);
-
-            log.info("[{}] syncing bags", node);
-
-            SyncView view = new SyncView();
-            view.setHost(node);
-            view.setType(SyncType.BAG);
-            view.setStatus(SyncStatus.SUCCESS);
-
-            PageIterable<Bag> it = new PageIterable<>(params, remote::getBags, view);
-            boolean failure = StreamSupport.stream(it.spliterator(), false)
-                    .map(f -> f.map(b -> syncLocal(local::getBag, local::createBag, local::updateBag, b, b.getUuid(), view)))
-                    .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
-
-            views.add(view);
-            if (!failure) {
-                // TODO: 9/28/16 saveorupdate
-                last.setTime(now);
-            } else {
-                log.warn("Not updating last sync to bags for {}", node);
-            }
-
-            saveSync(last);
-        }
-
-        save(views);
     }
 
     private void saveSync(LastSync last) {
@@ -368,9 +405,9 @@ public class Synchronizer {
 
         final Map<String, String> params;
         final Function<Map<String, String>, Call<? extends Response<T>>> get;
-        private final SyncView view;
+        private final SyncOp view;
 
-        public PageIterable(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get, SyncView view) {
+        public PageIterable(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get, SyncOp view) {
             this.get = get;
             this.params = params;
             this.view = view;
@@ -387,7 +424,7 @@ public class Synchronizer {
     class PageIterator<T> implements Iterator<Optional<T>> {
 
         final int pageSize = 25;
-        private final SyncView view;
+        private final SyncOp op;
 
         int page;
         int count;
@@ -395,10 +432,10 @@ public class Synchronizer {
         Map<String, String> params;
         Function<Map<String, String>, Call<? extends Response<T>>> get;
 
-        public PageIterator(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get, SyncView view) {
+        public PageIterator(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get, SyncOp op) {
             this.page = 1;
             this.get = get;
-            this.view = view;
+            this.op = op;
             this.params = params;
             this.results = new ArrayList<>();
             this.params.put(PAGE_PARAM, String.valueOf(page));
@@ -407,7 +444,7 @@ public class Synchronizer {
 
         @Override
         public boolean hasNext() {
-            return !results.isEmpty() || (page-1) * pageSize <= count;
+            return !results.isEmpty() || (page - 1) * pageSize <= count;
         }
 
         @Override
@@ -458,13 +495,13 @@ public class Synchronizer {
                 results.add(null);
                 body = e.getMessage();
 
-                // introspection for our view
+                // introspection for our op
                 detail.setResponseBody(body);
-                view.setStatus(SyncStatus.FAIL_REMOTE);
+                op.setStatus(SyncStatus.FAIL_REMOTE);
             }
 
             detail.setResponseBody(body);
-            view.addHttpDetail(detail);
+            op.addDetail(detail);
         }
 
         @Override
@@ -475,24 +512,25 @@ public class Synchronizer {
         }
     }
 
+    // Static helper functions
 
     /**
      * A sync function for models which are only created and never updated
      *
      * @param create Function to create T in the registry
-     * @param argT The T to sync
-     * @param view The sync view we record with
-     * @param <T> The type of the registry model to create
+     * @param argT   The T to sync
+     * @param op     The sync op we record with
+     * @param <T>    The type of the registry model to create
      */
-    static<T> boolean syncImmutable(Function<T, Call<T>> create, T argT, SyncView view) {
+    static <T> boolean syncImmutable(Function<T, Call<T>> create, T argT, SyncOp op) {
         boolean success = true;
         DetailEmitter<T> emitter = new DetailEmitter<>();
         Call<T> call = create.apply(argT);
         call.enqueue(emitter);
-        view.addHttpDetail(emitter.emit());
+        op.addDetail(emitter.emit());
         if (!emitter.getResponse().isPresent()) {
             success = false;
-            view.setStatus(SyncStatus.FAIL_LOCAL);
+            op.setStatus(SyncStatus.FAIL_LOCAL);
         }
         return success;
     }
@@ -502,16 +540,16 @@ public class Synchronizer {
      * These should all be local functions, as it's just determining whether a create or an update call
      * needs to be run because of the way the registry works.
      *
-     * @param get Function to get T from the registry
+     * @param get    Function to get T from the registry
      * @param create Function to create T in the registry
      * @param update Function to update T in the registry
-     * @param argT The T to sync
-     * @param argU An identifier for T used in the get/update calls
-     * @param <T> A type, ideally part of the registry models
-     * @param <U> An identifier for T
+     * @param argT   The T to sync
+     * @param argU   An identifier for T used in the get/update calls
+     * @param <T>    A type, ideally part of the registry models
+     * @param <U>    An identifier for T
      * @return the result of the synchronization
      */
-    static<T, U> boolean syncLocal(Function<U, Call<T>> get, Function<T, Call<T>> create, BiFunction<U, T, Call<T>> update, T argT, U argU, SyncView view) {
+    static <T, U> boolean syncLocal(Function<U, Call<T>> get, Function<T, Call<T>> create, BiFunction<U, T, Call<T>> update, T argT, U argU, SyncOp op) {
         Call<T> sync;
         boolean success = true;
         DetailEmitter<T> getCB = new DetailEmitter<>();
@@ -521,7 +559,7 @@ public class Synchronizer {
         Call<T> getCall = get.apply(argU);
         getCall.enqueue(getCB);
         Optional<T> response = getCB.getResponse();
-        view.addHttpDetail(getCB.emit());
+        op.addDetail(getCB.emit());
         if (response.isPresent()) {
             sync = update.apply(argU, argT);
         } else {
@@ -531,62 +569,15 @@ public class Synchronizer {
         // Perform our 'sync' call
         sync.enqueue(syncCB);
         response = syncCB.getResponse();
-        view.addHttpDetail(syncCB.emit());
+        op.addDetail(syncCB.emit());
         if (!response.isPresent()) {
-            log.warn("Unable to perform sync {}:{}", view.getHost(), view.getType());
-            view.setStatus(SyncStatus.FAIL_LOCAL);
+            log.warn("Unable to perform sync {}:{}", op.getParent().getHost(), op.getType());
+            op.setStatus(SyncStatus.FAIL_LOCAL);
             success = false;
         }
 
         return success;
     }
 
-    /**
-     * Update a nodes current information based on its own record
-     */
-    void syncNode() {
-        Map<String, BalustradeNode> apis = nodeAPIs.getApiMap();
-        BalustradeNode local = localAPI.getNodeAPI();
-
-        for (Map.Entry<String, BalustradeNode> entry : apis.entrySet()) {
-            boolean failure = false;
-            String node = entry.getKey();
-            BalustradeNode remote = entry.getValue();
-            log.info("[{}] syncing node", node);
-
-            org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.NODE);
-
-            SyncView view = new SyncView();
-            view.setHost(node);
-            view.setType(SyncType.NODE);
-            view.setStatus(SyncStatus.SUCCESS);
-
-            Call<Node> call = remote.getNode(node);
-            try {
-                retrofit2.Response<Node> execute = call.execute();
-                Node update = execute.body();
-                if (update.getUpdatedAt().isAfter(last.getTime())) {
-                    Call<Node> updateCall = local.updateNode(node, update);
-                    retrofit2.Response<Node> uExecute = updateCall.execute();
-
-                    // check if we didn't succeed
-                    failure = !uExecute.isSuccessful();
-                }
-            } catch (IOException e) {
-                log.error("Error syncing node {}", node, e);
-                failure = true;
-            }
-
-            if (!failure) {
-                last.setTime(ZonedDateTime.now());
-            } else {
-                log.warn("Not updating last sync to digest for {}", node);
-            }
-
-            saveSync(last);
-        }
-
-        // save(views);
-    }
 
 }
