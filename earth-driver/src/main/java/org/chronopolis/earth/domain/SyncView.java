@@ -1,7 +1,6 @@
 package org.chronopolis.earth.domain;
 
 import javax.persistence.CascadeType;
-import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
@@ -12,10 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * @deprecated will be removed in 2.0.0-RELEASE in favor of Sync + SyncOp
  *
  * Created by shake on 8/5/16.
  */
-@Entity
+// @Entity
+@Deprecated
 public class SyncView {
 
     @Id
