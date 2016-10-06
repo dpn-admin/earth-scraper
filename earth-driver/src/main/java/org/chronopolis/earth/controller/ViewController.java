@@ -1,7 +1,8 @@
 package org.chronopolis.earth.controller;
 
 import org.chronopolis.earth.domain.ReplicationFlow;
-import org.chronopolis.earth.domain.SyncView;
+import org.chronopolis.earth.domain.Sync;
+import org.chronopolis.earth.domain.SyncOp;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -25,13 +26,13 @@ import java.util.List;
  */
 @Controller
 @SuppressWarnings("WeakerAccess")
-public class Sync {
-    private final Logger log = LoggerFactory.getLogger(Sync.class);
+public class ViewController {
+    private final Logger log = LoggerFactory.getLogger(ViewController.class);
 
     SessionFactory factory;
 
     @Autowired
-    public Sync(SessionFactory factory) {
+    public ViewController(SessionFactory factory) {
         this.factory = factory;
     }
 
@@ -52,10 +53,10 @@ public class Sync {
 
     @RequestMapping(value = "/syncs", method = RequestMethod.GET)
     public String getSyncs(Model model) {
-        List<SyncView> views;
+        List<Sync> views;
         try (Session session = factory.openSession()) {
             // todo limit on this?
-            views = session.createQuery("from SyncView order by id desc", SyncView.class).list();
+            views = session.createQuery("from Sync order by id desc", Sync.class).list();
         }
         model.addAttribute("syncs", views);
         return "sync/index";
@@ -63,13 +64,25 @@ public class Sync {
 
     @RequestMapping(value = "/syncs/{id}", method = RequestMethod.GET)
     public String getSync(Model model, @PathVariable("id") Long id) {
-        SyncView view;
+        Sync sync;
         try (Session session = factory.openSession()) {
-            view = session.find(SyncView.class, id);
-            Hibernate.initialize(view.getHttpDetails());
+            sync = session.find(Sync.class, id);
+            Hibernate.initialize(sync.getOps());
         }
-        model.addAttribute("sync", view);
+        model.addAttribute("sync", sync);
         return "sync/sync";
+    }
+
+    @RequestMapping(value = "/syncs/{syncId}/ops/{opId}", method = RequestMethod.GET)
+    public String getOpDetails(Model model, @PathVariable("syncId") Long syncId, @PathVariable("opId") Long opId) {
+        SyncOp op;
+        try (Session session = factory.openSession()) {
+            op = session.find(SyncOp.class, opId);
+            Hibernate.initialize(op.getDetails());
+        }
+
+        model.addAttribute("op", op);
+        return "sync/op-details";
     }
 
 }
