@@ -13,16 +13,19 @@ html(lang="en")
               li: a(href="/replications") Replications
     div.container
       div.row
-        ul(data-collapsible="expandable")#requests.collapsible
-          each request in sync.httpDetails
-            li
-              div.collapsible-header #{request.requestMethod} #{request.url}
-                span.right #{request.responseCode}
-              div.collapsible-body
-                h6 Request Body
-                  // pre: code: #{request.requestBody}
-                  blockquote: #{request.requestBody}
-                h6 Response
-                  pre: code: #{request.responseBody}
-
+        table.narrow.bordered.highlight
+          thead
+            tr
+              th(style="width: 1%") Status
+              th Type
+              th Details
+          tbody
+            each op in sync.ops
+              tr
+                if op.status == "SUCCESS"
+                  td.green.accent-2
+                else
+                  td.red
+                td=op.type
+                td: a(href=sync.id + "/ops/" + op.id) View Details
 

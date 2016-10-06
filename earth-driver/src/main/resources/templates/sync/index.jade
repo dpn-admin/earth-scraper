@@ -18,17 +18,17 @@ html(lang="en")
             tr
               th(style="width: 1%") Status
               th Host
-              th Type
               th Details
           tbody
             each sync in syncs
               tr
                 if sync.status == "SUCCESS"
-                  td.green.accent-2 #{sync.status}
+                  td.green.accent-2
+                else if sync.status == "WARN"
+                  td.orange.accent-2
                 else
-                  td.red #{sync.status}
+                  td.red
                 td=sync.host
-                td=sync.type
-                td: a(href="syncs/" + sync.id) placeholder
+                td: a(href="/syncs/" + sync.id) View Details
 
 
