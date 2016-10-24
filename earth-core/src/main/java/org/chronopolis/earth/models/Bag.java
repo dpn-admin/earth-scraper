@@ -3,7 +3,6 @@ package org.chronopolis.earth.models;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Representation of a DPN bag
@@ -27,12 +26,6 @@ public class Bag {
     ZonedDateTime createdAt;
     ZonedDateTime updatedAt;
     String member;
-
-    /**
-     * @deprecated use {@link Digest} instead, will be removed by 2.0.0-RELEASE
-     */
-    @Deprecated
-    Map<String, String> fixities;
 
     public Bag() {
         // default constructor idkmybffrose
@@ -134,15 +127,6 @@ public class Bag {
 
     public Bag setReplicatingNodes(List<String> replicatingNodes) {
         this.replicatingNodes = replicatingNodes;
-        return this;
-    }
-
-    public Map<String, String> getFixities() {
-        return fixities;
-    }
-
-    public Bag setFixities(Map<String, String> fixities) {
-        this.fixities = fixities;
         return this;
     }
 

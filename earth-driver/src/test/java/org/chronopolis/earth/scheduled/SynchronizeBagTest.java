@@ -55,7 +55,6 @@ public class SynchronizeBagTest extends SynchronizerTest {
         b.setReplicatingNodes(ImmutableList.of());
         b.setRights(ImmutableList.of());
         b.setLocalId(uuid);
-        b.setFixities(ImmutableMap.of());
         b.setSize(0L);
         b.setVersion(1L);
         b.setMember(uuid);
