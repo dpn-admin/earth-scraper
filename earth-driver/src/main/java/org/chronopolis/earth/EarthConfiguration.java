@@ -30,7 +30,7 @@ import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.PageImpl;
@@ -50,12 +50,10 @@ import java.util.concurrent.TimeUnit;
  * Created by shake on 4/27/15.
  */
 @Configuration
+@EnableConfigurationProperties(EarthSettings.class)
 public class EarthConfiguration {
 
     private final Logger log = LoggerFactory.getLogger(EarthConfiguration.class);
-
-    @Autowired
-    EarthSettings settings;
 
     @Bean
     DateTimeFormatter formatter() {
@@ -93,7 +91,8 @@ public class EarthConfiguration {
     }
 
     @Bean
-    List<Retrofit> adapters(TransferAPIs transferAPIs,
+    List<Retrofit> adapters(EarthSettings settings,
+                            TransferAPIs transferAPIs,
                             EventAPIs eventAPIs,
                             NodeAPIs nodeAPIs,
                             BagAPIs bagAPIs,
@@ -126,7 +125,7 @@ public class EarthConfiguration {
     }
 
     @Bean
-    LocalAPI local(Gson gson) {
+    LocalAPI local(EarthSettings settings, Gson gson) {
         Dpn dpn = settings.getDpn();
         Endpoint local = dpn.getLocal();
         log.debug("Creating local adapter for root {}", local.getApiRoot());
@@ -149,7 +148,7 @@ public class EarthConfiguration {
     }
 
     @Bean
-    IngestAPI ingestAPI() {
+    IngestAPI ingestAPI(EarthSettings settings) {
         Ingest api = settings.getIngest();
 
         Type bagPage = new TypeToken<PageImpl<Bag>>() {}.getType();

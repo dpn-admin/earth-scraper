@@ -27,11 +27,14 @@ import java.security.cert.X509Certificate;
 public class Earth implements CommandLineRunner {
     private final Logger log = LoggerFactory.getLogger(Earth.class);
 
-    @Autowired
-    DpnService service;
+    private final DpnService service;
+    private final EarthSettings settings;
 
     @Autowired
-    EarthSettings settings;
+    public Earth(DpnService service, EarthSettings settings) {
+        this.service = service;
+        this.settings = settings;
+    }
 
     /**
      * Main method for our application
