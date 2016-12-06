@@ -50,7 +50,7 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
                 log.error("Error writing response", e);
             }
 
-            log.warn("HTTP call was not successful {}", response.code(), errorBody);
+            log.warn("HTTP call was not successful ({}) {} {}", response.code(), response.raw().request().url(), errorBody);
         }
 
         phaser.arriveAndDeregister();
