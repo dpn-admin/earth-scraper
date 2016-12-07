@@ -8,22 +8,21 @@ import java.util.List;
  *
  * Created by shake on 3/27/15.
  */
-@SuppressWarnings("WeakerAccess")
 public class Node {
 
-    String name;
-    String namespace;
-    String apiRoot;
-    String sshPubkey;
-    List<String> replicateFrom;
-    List<String> replicateTo;
-    List<String> restoreFrom;
-    List<String> restoreTo;
-    List<String> protocols;
-    List<String> fixityAlgorithms;
-    ZonedDateTime createdAt;
-    ZonedDateTime updatedAt;
-    Storage storage;
+    private String name;
+    private String namespace;
+    private String apiRoot;
+    private String sshPubkey;
+    private List<String> replicateFrom;
+    private List<String> replicateTo;
+    private List<String> restoreFrom;
+    private List<String> restoreTo;
+    private List<String> protocols;
+    private List<String> fixityAlgorithms;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime updatedAt;
+    private Storage storage;
 
     public Node() {
     }

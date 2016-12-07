@@ -11,22 +11,21 @@ import javax.persistence.Lob;
  * Created by shake on 8/12/16.
  */
 @Entity(name = "HttpDetail")
-@SuppressWarnings("WeakerAccess")
 public class HttpDetail {
 
     @Id
     @GeneratedValue
-    Long id;
+    private Long id;
 
-    String url;
-    int responseCode;
-    String requestMethod;
-
-    @Lob
-    String requestBody;
+    private String url;
+    private int responseCode;
+    private String requestMethod;
 
     @Lob
-    String responseBody;
+    private String requestBody;
+
+    @Lob
+    private String responseBody;
 
     public HttpDetail() {
         responseCode = -1;

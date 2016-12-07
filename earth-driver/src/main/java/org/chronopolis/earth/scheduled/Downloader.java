@@ -67,10 +67,10 @@ public class Downloader {
     private static final String TAG_MANIFEST = "tagmanifest-sha256.txt";
     private static final String MANIFEST = "manifest-sha256.txt";
 
-    TransferAPIs apis;
-    IngestAPI chronopolis;
-    EarthSettings settings;
-    SessionFactory sessionFactory;
+    private TransferAPIs apis;
+    private IngestAPI chronopolis;
+    private EarthSettings settings;
+    private SessionFactory sessionFactory;
 
     @Autowired
     public Downloader(EarthSettings settings, IngestAPI chronopolis, TransferAPIs apis, SessionFactory factory) {
@@ -494,7 +494,7 @@ public class Downloader {
         Path tarball = Paths.get(stage,
                 transfer.getFromNode(),
                 transfer.getBag() + ".tar");
-        log.info("{}", tarball);
+        log.trace("{}", tarball);
         HashCode hash = null;
         try {
             TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball));

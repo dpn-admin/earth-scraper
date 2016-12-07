@@ -9,23 +9,22 @@ import java.util.List;
  *
  * Created by shake on 3/27/15.
  */
-@SuppressWarnings("WeakerAccess")
 public class Bag {
 
-    String uuid;
-    String localId;
-    Long size;
-    String firstVersionUuid;
-    String ingestNode;
-    String adminNode;
-    Long version;
-    char bagType;
-    List<String> interpretive;
-    List<String> rights;
-    List<String> replicatingNodes;
-    ZonedDateTime createdAt;
-    ZonedDateTime updatedAt;
-    String member;
+    private String uuid;
+    private String localId;
+    private Long size;
+    private String firstVersionUuid;
+    private String ingestNode;
+    private String adminNode;
+    private Long version;
+    private char bagType;
+    private List<String> interpretive;
+    private List<String> rights;
+    private List<String> replicatingNodes;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime updatedAt;
+    private String member;
 
     public Bag() {
         // default constructor idkmybffrose

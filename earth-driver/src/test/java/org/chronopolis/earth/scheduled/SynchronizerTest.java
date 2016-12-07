@@ -21,8 +21,6 @@ import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.ISODateTimeFormat;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.mockito.Mock;
@@ -90,7 +88,6 @@ public class SynchronizerTest {
         localAPI.setNodeAPI(localNode);
         localAPI.setTransfersAPI(localTransfer);
         localAPI.setEventsAPI(localEvents);
-        DateTimeFormatter fmt = ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
         BagAPIs bagAPIs = new BagAPIs();
         bagAPIs.put(node, remoteBag);
         NodeAPIs nodeAPIs = new NodeAPIs();

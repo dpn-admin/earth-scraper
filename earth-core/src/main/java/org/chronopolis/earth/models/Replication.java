@@ -8,24 +8,23 @@ import java.time.ZonedDateTime;
  *
  * Created by shake on 3/2/15.
  */
-@SuppressWarnings("WeakerAccess")
 public class Replication {
 
-    String replicationId;
-    String fromNode;
-    String toNode;
-    String bag;
-    String fixityAlgorithm;
-    String fixityNonce;
-    String fixityValue;
-    String protocol;
-    String link;
-    ZonedDateTime createdAt;
-    ZonedDateTime updatedAt;
-    Boolean storeRequested;
-    Boolean stored;
-    Boolean cancelled;
-    String cancelReason;
+    private String replicationId;
+    private String fromNode;
+    private String toNode;
+    private String bag;
+    private String fixityAlgorithm;
+    private String fixityNonce;
+    private String fixityValue;
+    private String protocol;
+    private String link;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime updatedAt;
+    private Boolean storeRequested;
+    private Boolean stored;
+    private Boolean cancelled;
+    private String cancelReason;
 
     public Replication() {
     }

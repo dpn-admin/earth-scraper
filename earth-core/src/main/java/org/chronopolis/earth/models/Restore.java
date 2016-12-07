@@ -7,21 +7,20 @@ import java.time.ZonedDateTime;
  *
  * Created by shake on 3/27/15.
  */
-@SuppressWarnings("WeakerAccess")
 public class Restore {
 
-    String restoreId;
-    String fromNode;
-    String toNode;
-    String bag;
-    String protocol;
-    String link;
-    ZonedDateTime createdAt;
-    ZonedDateTime updatedAt;
-    Boolean accepted;
-    Boolean finished;
-    Boolean cancelled;
-    String cancelReason;
+    private String restoreId;
+    private String fromNode;
+    private String toNode;
+    private String bag;
+    private String protocol;
+    private String link;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime updatedAt;
+    private Boolean accepted;
+    private Boolean finished;
+    private Boolean cancelled;
+    private String cancelReason;
 
     public Restore() {
     }

@@ -1,5 +1,6 @@
 package org.chronopolis.earth.scheduled;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
@@ -70,12 +71,12 @@ public class Synchronizer {
     static final String AFTER_PARAM = "after";
     static final String ADMIN_PARAM = "admin_node";
 
-    final BagAPIs bagAPIs;
-    final NodeAPIs nodeAPIs;
-    final LocalAPI localAPI;
-    final EventAPIs eventAPIs;
-    final TransferAPIs transferAPIs;
-    final SessionFactory sessionFactory;
+    private final BagAPIs bagAPIs;
+    private final NodeAPIs nodeAPIs;
+    private final LocalAPI localAPI;
+    private final EventAPIs eventAPIs;
+    private final TransferAPIs transferAPIs;
+    private final SessionFactory sessionFactory;
 
     ListeningExecutorService service;
 
@@ -126,10 +127,11 @@ public class Synchronizer {
     }
 
 
-    void syncFixities(Events remote, String node, Sync sync) {
+    @VisibleForTesting
+    public void syncFixities(Events remote, String node, Sync sync) {
         Events local = localAPI.getEventsAPI();
         ZonedDateTime now = ZonedDateTime.now();
-        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.FIXITY);
+        LastSync last = getLastSync(node, SyncType.FIXITY);
         String after = last.getFormattedTime();
 
         Map<String, String> params = new HashMap<>();
@@ -158,10 +160,10 @@ public class Synchronizer {
         saveSync(last);
     }
 
-    void syncIngests(Events remote, String node, Sync sync) {
+    public void syncIngests(Events remote, String node, Sync sync) {
         Events local = localAPI.getEventsAPI();
         ZonedDateTime now = ZonedDateTime.now();
-        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.INGEST);
+        LastSync last = getLastSync(node, SyncType.INGEST);
         String after = last.getFormattedTime();
 
         Map<String, String> params = new HashMap<>();
@@ -191,10 +193,10 @@ public class Synchronizer {
         saveSync(last);
     }
 
-    void syncTransfers(BalustradeTransfers remote, String node, Sync sync) {
+    public void syncTransfers(BalustradeTransfers remote, String node, Sync sync) {
         BalustradeTransfers local = localAPI.getTransfersAPI();
         ZonedDateTime now = ZonedDateTime.now();
-        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.REPL);
+        LastSync last = getLastSync(node, SyncType.REPL);
         String after = last.getFormattedTime();
 
         Map<String, String> params = new HashMap<>();
@@ -223,10 +225,10 @@ public class Synchronizer {
         saveSync(last);
     }
 
-    void syncBags(BalustradeBag remote, String node, Sync sync) {
+    public void syncBags(BalustradeBag remote, String node, Sync sync) {
         BalustradeBag local = localAPI.getBagAPI();
         ZonedDateTime now = ZonedDateTime.now();
-        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.BAG);
+        LastSync last = getLastSync(node, SyncType.BAG);
         String after = last.getFormattedTime();
 
         Map<String, String> params = new HashMap<>();
@@ -254,12 +256,12 @@ public class Synchronizer {
         saveSync(last);
     }
 
-    void syncNode(BalustradeNode remote, String node, Sync sync) {
+    public void syncNode(BalustradeNode remote, String node, Sync sync) {
         BalustradeNode local = localAPI.getNodeAPI();
         boolean failure = false;
         log.info("[{}] syncing node", node);
 
-        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.NODE);
+        LastSync last = getLastSync(node, SyncType.NODE);
 
         SyncOp op = new SyncOp().setParent(sync)
                 .setType(SyncType.NODE)
@@ -290,11 +292,11 @@ public class Synchronizer {
         saveSync(last);
     }
 
-    void syncDigests(Events remote, String node, Sync sync) {
+    public void syncDigests(Events remote, String node, Sync sync) {
         BalustradeBag local = localAPI.getBagAPI();
         ZonedDateTime now = ZonedDateTime.now();
 
-        org.chronopolis.earth.domain.LastSync last = getLastSync(node, SyncType.DIGEST);
+        LastSync last = getLastSync(node, SyncType.DIGEST);
         String after = last.getFormattedTime();
 
         Map<String, String> params = new HashMap<>();
@@ -344,16 +346,16 @@ public class Synchronizer {
      * @param type The type of sync we're doing
      * @return the last sync of the node + type
      */
-    private org.chronopolis.earth.domain.LastSync getLastSync(String node, SyncType type) {
-        org.chronopolis.earth.domain.LastSync last;
+    private LastSync getLastSync(String node, SyncType type) {
+        LastSync last;
         try (Session session = sessionFactory.openSession()) {
-            last = (org.chronopolis.earth.domain.LastSync) session.createQuery("select l from LastSync l where l.node = :node AND l.type = :type")
+            last = (LastSync) session.createQuery("select l from LastSync l where l.node = :node AND l.type = :type")
                     .setParameter("node", node)
                     .setParameter("type", type)
                     .getSingleResult();
         } catch (NoResultException ne) {
             // Init last here. Do we want to save it as well though?
-            last = new org.chronopolis.earth.domain.LastSync();
+            last = new LastSync();
             last.setNode(node);
             last.setType(type);
         }
@@ -375,22 +377,6 @@ public class Synchronizer {
     }
 
 
-    /**
-     * Persist a group of SyncViews
-     * <p>
-     * TODO: This probably isn't the best idiom to use + should use batching properly
-     *
-     * @param views the SyncViews to save
-     */
-    void save(List<SyncOp> views) {
-        try (Session session = sessionFactory.openSession()) {
-            log.info("Saving {} views", views.size());
-            session.getTransaction().begin();
-            views.forEach(session::persist);
-            session.getTransaction().commit();
-        }
-    }
-
     private void saveSync(LastSync last) {
         try (Session session = sessionFactory.openSession()) {
             session.getTransaction().begin();
@@ -403,8 +389,8 @@ public class Synchronizer {
 
     class PageIterable<T> implements Iterable<Optional<T>> {
 
-        final Map<String, String> params;
-        final Function<Map<String, String>, Call<? extends Response<T>>> get;
+        private final Map<String, String> params;
+        private final Function<Map<String, String>, Call<? extends Response<T>>> get;
         private final SyncOp view;
 
         public PageIterable(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get, SyncOp view) {
@@ -423,14 +409,14 @@ public class Synchronizer {
     // TODO: Figure out what we want to do with count
     class PageIterator<T> implements Iterator<Optional<T>> {
 
-        final int pageSize = 25;
+        private final int pageSize = 25;
         private final SyncOp op;
 
-        int page;
-        int count;
-        List<T> results;
-        Map<String, String> params;
-        Function<Map<String, String>, Call<? extends Response<T>>> get;
+        private int page;
+        private int count;
+        private List<T> results;
+        private Map<String, String> params;
+        private Function<Map<String, String>, Call<? extends Response<T>>> get;
 
         public PageIterator(Map<String, String> params, Function<Map<String, String>, Call<? extends Response<T>>> get, SyncOp op) {
             this.page = 1;
@@ -522,7 +508,7 @@ public class Synchronizer {
      * @param op     The sync op we record with
      * @param <T>    The type of the registry model to create
      */
-    static <T> boolean syncImmutable(Function<T, Call<T>> create, T argT, SyncOp op) {
+    private static <T> boolean syncImmutable(Function<T, Call<T>> create, T argT, SyncOp op) {
         boolean success = true;
         DetailEmitter<T> emitter = new DetailEmitter<>();
         Call<T> call = create.apply(argT);
@@ -549,7 +535,7 @@ public class Synchronizer {
      * @param <U>    An identifier for T
      * @return the result of the synchronization
      */
-    static <T, U> boolean syncLocal(Function<U, Call<T>> get, Function<T, Call<T>> create, BiFunction<U, T, Call<T>> update, T argT, U argU, SyncOp op) {
+    private static <T, U> boolean syncLocal(Function<U, Call<T>> get, Function<T, Call<T>> create, BiFunction<U, T, Call<T>> update, T argT, U argU, SyncOp op) {
         Call<T> sync;
         boolean success = true;
         DetailEmitter<T> getCB = new DetailEmitter<>();

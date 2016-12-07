@@ -7,7 +7,7 @@ package org.chronopolis.earth.models;
  */
 public class SumResponse<E> extends Response<E> {
 
-    Long totalSize;
+    private Long totalSize;
 
     public Long getTotalSize() {
         return totalSize;

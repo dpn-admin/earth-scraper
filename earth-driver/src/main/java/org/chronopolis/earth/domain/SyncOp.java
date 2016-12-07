@@ -21,19 +21,19 @@ public class SyncOp {
 
     @Id
     @GeneratedValue
-    Long id;
+    private Long id;
 
     @ManyToOne
-    Sync parent;
+    private Sync parent;
 
     @Enumerated(value = EnumType.STRING)
-    SyncType type;
+    private SyncType type;
 
     @Enumerated(value = EnumType.STRING)
-    SyncStatus status;
+    private SyncStatus status;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    List<HttpDetail> details = new ArrayList<>();
+    private List<HttpDetail> details = new ArrayList<>();
 
     public Long getId() {
         return id;

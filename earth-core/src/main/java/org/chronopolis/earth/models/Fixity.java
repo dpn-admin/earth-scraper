@@ -11,9 +11,9 @@ import org.joda.time.DateTime;
 @Deprecated
 public class Fixity {
 
-    String algorithm;
-    String digest;
-    DateTime createdAt;
+    private String algorithm;
+    private String digest;
+    private DateTime createdAt;
 
     public String getAlgorithm() {
         return algorithm;

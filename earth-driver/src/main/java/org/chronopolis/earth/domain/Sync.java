@@ -29,15 +29,15 @@ public class Sync {
 
     @Id
     @GeneratedValue
-    Long id;
+    private Long id;
 
     @Enumerated(value = EnumType.STRING)
-    SyncStatus status;
+    private SyncStatus status;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    List<SyncOp> ops = new ArrayList<>();
+    private List<SyncOp> ops = new ArrayList<>();
 
-    String host;
+    private String host;
 
     public Long getId() {
         return id;
