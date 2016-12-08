@@ -48,12 +48,12 @@ import java.util.Optional;
 public class CLIService implements DpnService {
     private final Logger log = LoggerFactory.getLogger(CLIService.class);
 
-    final BagAPIs bagAPIs;
-    final NodeAPIs nodeAPIs;
-    final TransferAPIs transferAPIs;
+    private final BagAPIs bagAPIs;
+    private final NodeAPIs nodeAPIs;
+    private final TransferAPIs transferAPIs;
 
-    final SessionFactory factory;
-    final ApplicationContext context;
+    private final SessionFactory factory;
+    private final ApplicationContext context;
 
     @Autowired
     public CLIService(BagAPIs bagAPIs, NodeAPIs nodeAPIs, ApplicationContext context, TransferAPIs transferAPIs, SessionFactory factory) {
@@ -214,7 +214,7 @@ public class CLIService implements DpnService {
     /**
      * Consumer for transfer apis
      *
-     * @param entry
+     * @param entry the map of Node, Transfer apis to iterate
      */
     private void consumeTransfer(Map.Entry<String, BalustradeTransfers> entry) {
         log.info("{}", entry.getKey());
@@ -229,7 +229,10 @@ public class CLIService implements DpnService {
             Response<Replication> replications = response.get();
             log.info("Showing {} out of {} total", replications.getResults().size(), replications.getCount());
             for (Replication replication : replications.getResults()) {
-                // log.info("[{}] {}", replication.status(), replication.getId());
+                log.info("{}: storeRequested={}, stored={}, cancelled={}", replication.getReplicationId(),
+                        replication.isStoreRequested(),
+                        replication.isStored(),
+                        replication.isCancelled());
             }
         }
     }

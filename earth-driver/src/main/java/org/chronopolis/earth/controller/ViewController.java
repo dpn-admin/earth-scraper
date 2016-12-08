@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * Controller for introspecting sync operations
  *
- // TODO: Could have all the Session stuff in a service/dto/whateverthefuck class
+ // TODO: Could have all the Session stuff in a service/dto class
  *
  * Created by shake on 8/4/16.
  */

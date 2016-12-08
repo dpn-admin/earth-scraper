@@ -61,15 +61,14 @@ import java.util.stream.StreamSupport;
 @Component
 @Profile("sync")
 @EnableScheduling
-@SuppressWarnings("WeakerAccess")
 public class Synchronizer {
 
     private static final Logger log = LoggerFactory.getLogger(Synchronizer.class);
-    static final String PAGE_PARAM = "page";
-    static final String NODE_PARAM = "node";
-    static final String FROM_PARAM = "from_node";
-    static final String AFTER_PARAM = "after";
-    static final String ADMIN_PARAM = "admin_node";
+    private static final String PAGE_PARAM = "page";
+    private static final String NODE_PARAM = "node";
+    private static final String FROM_PARAM = "from_node";
+    private static final String AFTER_PARAM = "after";
+    private static final String ADMIN_PARAM = "admin_node";
 
     private final BagAPIs bagAPIs;
     private final NodeAPIs nodeAPIs;

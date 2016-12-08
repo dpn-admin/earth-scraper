@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
  * Created by shake on 8/17/16.
  */
 public class SynchronizeFixityTest extends SynchronizerTest {
-    FixityCheck f;
+    private FixityCheck f;
 
     @Before
     public void setup() {

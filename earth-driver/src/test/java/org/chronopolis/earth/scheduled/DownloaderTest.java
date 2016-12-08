@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Call;
 import retrofit2.Callback;
+import retrofit2.Response;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -131,13 +132,13 @@ public class DownloaderTest {
         }
 
         @Override
-        public retrofit2.Response<T> execute() throws IOException {
-            return retrofit2.Response.success(t);
+        public Response<T> execute() throws IOException {
+            return Response.success(t);
         }
 
         @Override
         public void enqueue(Callback<T> callback) {
-            callback.onResponse(this, retrofit2.Response.success(t));
+            callback.onResponse(this, Response.success(t));
         }
 
         @Override
@@ -147,7 +148,7 @@ public class DownloaderTest {
 
         @Override
         public void cancel() {
-
+            // We don't actually cancel these so there's nothing to do
         }
 
         @Override
@@ -167,15 +168,15 @@ public class DownloaderTest {
     }
 
     class FailedCall<T> extends SuccessfulCall<T> {
-        private final retrofit2.Response response;
+        private final Response<T> response;
 
         FailedCall(T t) {
             super(t);
-            this.response = retrofit2.Response.error(404, ResponseBody.create(MediaType.parse("text/plain"), "not found"));
+            this.response = Response.error(404, ResponseBody.create(MediaType.parse("text/plain"), "not found"));
         }
 
         @Override
-        public retrofit2.Response<T> execute() throws IOException {
+        public Response<T> execute() throws IOException {
             return response;
         }
 
@@ -186,11 +187,11 @@ public class DownloaderTest {
     }
 
     class ExceptedCall<T> extends SuccessfulCall<T> {
-        private final retrofit2.Response response;
+        private final Response<T> response;
 
         ExceptedCall() {
             super(null);
-            this.response = retrofit2.Response.error(404, ResponseBody.create(MediaType.parse("text/plain"), "not found"));
+            this.response = Response.error(404, ResponseBody.create(MediaType.parse("text/plain"), "not found"));
         }
 
         @Override

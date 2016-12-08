@@ -153,8 +153,8 @@ public class Node {
     // Storage class to encapsulate the object
 
     public class Storage {
-        String region;
-        String type;
+        private String region;
+        private String type;
 
         public Storage(String region, String type) {
             this.region = region;

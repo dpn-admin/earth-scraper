@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
  */
 public class SynchronizeIngestTest extends SynchronizerTest {
 
-    Ingest i;
+    private Ingest i;
 
     @Before
     public void setup() {

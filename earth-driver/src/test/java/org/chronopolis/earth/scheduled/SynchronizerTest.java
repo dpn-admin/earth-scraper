@@ -67,8 +67,8 @@ public class SynchronizerTest {
     @Mock Events remoteEvents;
 
     Synchronizer synchronizer;
-    SessionFactory factory;
-    static StandardServiceRegistry registry;
+    private SessionFactory factory;
+    private static StandardServiceRegistry registry;
 
     @BeforeClass
     public static void setupDB() {

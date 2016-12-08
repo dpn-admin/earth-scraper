@@ -7,10 +7,10 @@ package org.chronopolis.earth.config;
  */
 public class Ingest {
 
-    String username;
-    String password;
-    String endpoint;
-    String node;
+    private String username;
+    private String password;
+    private String endpoint;
+    private String node;
 
     public String getUsername() {
         return username;

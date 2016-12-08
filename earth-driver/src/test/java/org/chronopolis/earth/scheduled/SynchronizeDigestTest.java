@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
  * Created by shake on 8/17/16.
  */
 public class SynchronizeDigestTest extends SynchronizerTest {
-    Digest d;
+    private Digest d;
 
     @Before
     public void setup() {

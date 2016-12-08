@@ -62,17 +62,17 @@ public class Earth implements CommandLineRunner {
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
                     @Override
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                    public X509Certificate[] getAcceptedIssuers() {
                         return new X509Certificate[0];
                     }
                     @Override
                     public void checkClientTrusted(
-                            java.security.cert.X509Certificate[] certs, String authType) {
+                            X509Certificate[] certs, String authType) {
                         // Needed for X509TrustManager
                     }
                     @Override
                     public void checkServerTrusted(
-                            java.security.cert.X509Certificate[] certs, String authType) {
+                            X509Certificate[] certs, String authType) {
                         // Needed for X509TrustManager
                     }
                 }
