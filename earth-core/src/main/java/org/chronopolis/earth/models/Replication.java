@@ -26,9 +26,6 @@ public class Replication {
     private Boolean cancelled;
     private String cancelReason;
 
-    public Replication() {
-    }
-
     public ZonedDateTime getUpdatedAt() {
         return updatedAt;
     }

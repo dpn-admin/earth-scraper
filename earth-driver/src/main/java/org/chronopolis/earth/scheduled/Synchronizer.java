@@ -116,14 +116,6 @@ public class Synchronizer {
             sync.updateStatus();
             save(sync);
         }
-
-        // syncNode();
-        // syncBags();
-        // syncTransfers();
-        // events
-        // syncIngests();
-        // syncFixities();
-        // syncDigests();
     }
 
 
@@ -178,7 +170,6 @@ public class Synchronizer {
 
         PageIterable<Ingest> it = new PageIterable<>(params, remote::getIngests, op);
 
-        // TODO: lastSync
         boolean failure = StreamSupport.stream(it.spliterator(), false)
                 .map(o -> o.map(i -> syncImmutable(local::createIngest, i, op)))
                 .anyMatch(p -> !p.isPresent() || !p.get()); // not present or sync failed
@@ -377,6 +368,11 @@ public class Synchronizer {
     }
 
 
+    /**
+     * Persist the LastSync to the db
+     *
+     * @param last the LasySync to save or update
+     */
     private void saveSync(LastSync last) {
         try (Session session = sessionFactory.openSession()) {
             session.getTransaction().begin();

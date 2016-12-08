@@ -16,9 +16,6 @@ public class FixityCheck {
     private ZonedDateTime fixityAt;
     private ZonedDateTime createdAt;
 
-    public FixityCheck() {
-    }
-
     public String getBag() {
         return bag;
     }

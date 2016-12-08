@@ -26,10 +26,6 @@ public class Bag {
     private ZonedDateTime updatedAt;
     private String member;
 
-    public Bag() {
-        // default constructor idkmybffrose
-    }
-
     public String getUuid() {
         return uuid;
     }

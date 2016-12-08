@@ -22,9 +22,6 @@ public class Restore {
     private Boolean cancelled;
     private String cancelReason;
 
-    public Restore() {
-    }
-
     public String getRestoreId() {
         return restoreId;
     }

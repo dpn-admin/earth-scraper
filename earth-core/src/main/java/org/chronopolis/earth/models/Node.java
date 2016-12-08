@@ -24,9 +24,6 @@ public class Node {
     private ZonedDateTime updatedAt;
     private Storage storage;
 
-    public Node() {
-    }
-
     public String getName() {
         return name;
     }
