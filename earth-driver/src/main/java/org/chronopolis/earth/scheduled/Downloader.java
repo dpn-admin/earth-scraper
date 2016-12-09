@@ -377,8 +377,7 @@ public class Downloader {
         HashFunction func = Hashing.sha256();
         Charset cs = Charset.defaultCharset();
 
-        try {
-            BufferedReader br = java.nio.file.Files.newBufferedReader(manifest, cs);
+        try(BufferedReader br = java.nio.file.Files.newBufferedReader(manifest, cs)) {
             while ((line = br.readLine()) != null) {
                 String[] split = line.split("\\s+", 2);
                 if (split.length != 2) {
@@ -496,8 +495,7 @@ public class Downloader {
                 transfer.getBag() + ".tar");
         log.trace("{}", tarball);
         HashCode hash = null;
-        try {
-            TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball));
+        try (TarArchiveInputStream tais = new TarArchiveInputStream(java.nio.file.Files.newInputStream(tarball))) {
             TarArchiveEntry entry;
             while ((entry = tais.getNextTarEntry()) != null) {
                 if (entry.getName().equals(transfer.getBag() + "/" + TAG_MANIFEST)) {
@@ -508,7 +506,6 @@ public class Downloader {
                     tais.read(buf, 0, size);
                     hasher.putBytes(buf);
                     hash = hasher.hash();
-                    tais.close();
                     break;
                 }
             }
