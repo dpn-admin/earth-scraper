@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-configuration SYSTEM
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+  <session-factory>
+    <!-- db connection -->
+    <property name="hibernate.connection.provider_class">com.zaxxer.hikari.hibernate.HikariConnectionProvider</property>
+
+    <property name="hibernate.hikari.dataSource.url">jdbc:h2:./db/test-intake</property>
+    <property name="hibernate.hikari.dataSourceClassName">org.h2.jdbcx.JdbcDataSource</property>
+    <property name="dialect">org.hibernate.dialect.H2Dialect</property>
+    <property name="show_sql">true</property>
+    <property name="hibernate.hbm2ddl.auto">create</property>
+
+    <!-- Annotated classes -->
+    <mapping class="org.chronopolis.earth.domain.HttpDetail"/>
+    <mapping class="org.chronopolis.earth.domain.ReplicationFlow"/>
+    <mapping class="org.chronopolis.earth.domain.Sync"/>
+    <mapping class="org.chronopolis.earth.domain.SyncOp"/>
+    <mapping class="org.chronopolis.earth.domain.LastSync"/>
+  </session-factory>
+</hibernate-configuration>

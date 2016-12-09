@@ -1,7 +1,6 @@
 package org.chronopolis.earth.models;
 
-import org.joda.time.DateTime;
-
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -11,22 +10,19 @@ import java.util.List;
  */
 public class Node {
 
-    String name;
-    String namespace;
-    String apiRoot;
-    String sshPubkey;
-    List<String> replicateFrom;
-    List<String> replicateTo;
-    List<String> restoreFrom;
-    List<String> restoreTo;
-    List<String> protocols;
-    List<String> fixityAlgorithms;
-    DateTime createdAt;
-    DateTime updatedAt;
-    Storage storage;
-
-    public Node() {
-    }
+    private String name;
+    private String namespace;
+    private String apiRoot;
+    private String sshPubkey;
+    private List<String> replicateFrom;
+    private List<String> replicateTo;
+    private List<String> restoreFrom;
+    private List<String> restoreTo;
+    private List<String> protocols;
+    private List<String> fixityAlgorithms;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime updatedAt;
+    private Storage storage;
 
     public String getName() {
         return name;
@@ -118,20 +114,20 @@ public class Node {
         return this;
     }
 
-    public DateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public Node setCreatedAt(DateTime createdAt) {
+    public Node setCreatedAt(ZonedDateTime createdAt) {
         this.createdAt = createdAt;
         return this;
     }
 
-    public DateTime getUpdatedAt() {
+    public ZonedDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public Node setUpdatedAt(DateTime updatedAt) {
+    public Node setUpdatedAt(ZonedDateTime updatedAt) {
         this.updatedAt = updatedAt;
         return this;
     }
@@ -157,8 +153,8 @@ public class Node {
     // Storage class to encapsulate the object
 
     public class Storage {
-        String region;
-        String type;
+        private String region;
+        private String type;
 
         public Storage(String region, String type) {
             this.region = region;

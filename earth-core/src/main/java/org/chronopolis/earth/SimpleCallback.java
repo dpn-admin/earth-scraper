@@ -2,17 +2,17 @@ package org.chronopolis.earth;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Phaser;
 
 /**
  * Implementation of a Callback and ResponseGetter
- * TODO: Try using a Monitor from guava instead of a countdown latch
- *       It should allow us to use a callback multiple times
+ * TODO: Could still check out Monitor, it may reduce some of the cognitive load
  *
  * Upon receiving the HTTP response we save the object or
  * log the error
@@ -23,12 +23,19 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
     private final Logger log = LoggerFactory.getLogger(SimpleCallback.class);
 
     private E response;
-    private CountDownLatch latch = new CountDownLatch(1);
+
+    /**
+     * A quick note about our phaser:
+     * We start with 2 parties (the response/failure and client request)
+     * When the initial response gets back, we deregister so that we can
+     * continue to make calls to getResponse
+     *
+     */
+    private Phaser phaser = new Phaser(2);
 
     @Override
-    public void onResponse(Response<E> response) {
-        if (response.isSuccess()) {
-            // TODO: HTTP {GET/POST/PUT/etc}
+    public void onResponse(Call<E> call, Response<E> response) {
+        if (response.isSuccessful()) {
             log.debug("Successfully completed HTTP Call with response code {} - {} ",
                 response.code(),
                 response.message());
@@ -40,28 +47,24 @@ public class SimpleCallback<E> implements Callback<E>, ResponseGetter<E> {
                 errorBody = response.errorBody().string();
             } catch (IOException e) {
                 errorBody = e.getMessage();
+                log.error("Error writing response", e);
             }
 
-            log.warn("HTTP call was not successful {}", response.code(), errorBody);
+            log.warn("HTTP call was not successful ({}) {} {}", response.code(), response.raw().request().url(), errorBody);
         }
 
-        latch.countDown();
+        phaser.arriveAndDeregister();
     }
 
     @Override
-    public void onFailure(Throwable throwable) {
+    public void onFailure(Call<E> call, Throwable throwable) {
         log.error("Error in HTTP Call: ", throwable);
-        latch.countDown();
+        phaser.arriveAndDeregister();
     }
 
     @Override
     public Optional<E> getResponse() {
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            log.error("Error awaiting latch count down", e);
-        }
-
+        phaser.arriveAndAwaitAdvance();
         return Optional.ofNullable(response);
     }
 

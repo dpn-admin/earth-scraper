@@ -1,6 +1,8 @@
 package org.chronopolis.earth;
 
 import org.chronopolis.earth.service.DpnService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -23,13 +25,22 @@ import java.security.cert.X509Certificate;
 @EnableConfigurationProperties
 @SpringBootApplication(exclude = {HibernateJpaAutoConfiguration.class})
 public class Earth implements CommandLineRunner {
+    private final Logger log = LoggerFactory.getLogger(Earth.class);
+
+    private final DpnService service;
+    private final EarthSettings settings;
 
     @Autowired
-    DpnService service;
+    public Earth(DpnService service, EarthSettings settings) {
+        this.service = service;
+        this.settings = settings;
+    }
 
-    @Autowired
-    EarthSettings settings;
-
+    /**
+     * Main method for our application
+     *
+     * @param args execution arguments
+     */
     public static void main(String[] args) {
         SpringApplication.exit(SpringApplication.run(Earth.class));
     }
@@ -38,7 +49,7 @@ public class Earth implements CommandLineRunner {
     public void run(final String... args) throws Exception {
         // Disable ssl cert validation
         if (settings.disableSNI()) {
-            System.out.println("Disabling SNI/cert validation");
+            log.info("Disabling SNI/cert validation");
             System.setProperty("jsse.enableSNIExtension", "false");
             disableCertValidation();
         }
@@ -50,14 +61,19 @@ public class Earth implements CommandLineRunner {
         // Create a trust manager that does not validate certificate chains
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
                         return new X509Certificate[0];
                     }
+                    @Override
                     public void checkClientTrusted(
-                            java.security.cert.X509Certificate[] certs, String authType) {
+                            X509Certificate[] certs, String authType) {
+                        // Needed for X509TrustManager
                     }
+                    @Override
                     public void checkServerTrusted(
-                            java.security.cert.X509Certificate[] certs, String authType) {
+                            X509Certificate[] certs, String authType) {
+                        // Needed for X509TrustManager
                     }
                 }
         };
@@ -67,7 +83,8 @@ public class Earth implements CommandLineRunner {
             SSLContext sc = SSLContext.getInstance("SSL");
             sc.init(null, trustAllCerts, new java.security.SecureRandom());
             HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-        } catch (GeneralSecurityException ignored) {
+        } catch (GeneralSecurityException e) {
+            log.error("Error in sslcontext", e);
         }
     }
 }

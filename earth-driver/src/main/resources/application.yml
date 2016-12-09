@@ -26,6 +26,8 @@ spring.profiles.active: production
 # Disable any type of DB support
 spring.data.jpa.repositories.enabled: false
 
+server.port: 9000
+
 logging:
   path: /var/log/dpn/
   file: dpn.log

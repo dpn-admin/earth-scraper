@@ -75,11 +75,9 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
 
         // Kind of funny how we check if it's a directory in visitFile, but it be how it be
         // Ignore tarballs, just get the directory names
-        if (path.toFile().isDirectory()) {
-            if (stateIsTerminal(path)) {
-                log.debug("{} is in terminal state", path.getFileName());
-                bags.put(path.getParent().getFileName().toString(), path);
-            }
+        if (path.toFile().isDirectory() && stateIsTerminal(path)){
+            log.debug("{} is in terminal state", path.getFileName());
+            bags.put(path.getParent().getFileName().toString(), path);
         }
 
         return FileVisitResult.CONTINUE;
@@ -116,9 +114,7 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
                 Replication replication = replications.getResults().get(0);
 
                 // Check the state of the replication
-                terminal = replication.status() == Replication.Status.STORED
-                        || replication.status() == Replication.Status.CANCELLED
-                        || replication.status() == Replication.Status.REJECTED;
+                terminal = replication.isStored() || replication.isCancelled();
             }
 
         } else {

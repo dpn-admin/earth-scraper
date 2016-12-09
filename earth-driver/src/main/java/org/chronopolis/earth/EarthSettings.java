@@ -3,14 +3,12 @@ package org.chronopolis.earth;
 import org.chronopolis.earth.config.Dpn;
 import org.chronopolis.earth.config.Ingest;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 /**
  * Configuration Properties for our application
  *
  * Created by shake on 11/14/14.
  */
-@Component
 @ConfigurationProperties(prefix = "earth")
 public class EarthSettings {
 

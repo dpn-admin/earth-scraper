@@ -2,12 +2,15 @@ package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
+import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
+import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Node;
-import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.ZonedDateTime;
 import java.util.concurrent.Executors;
 
 import static org.mockito.Mockito.times;
@@ -30,8 +33,8 @@ public class SynchronizeNodeTest extends SynchronizerTest {
         n.setName(node);
         n.setNamespace(node);
         n.setApiRoot("some-api-root");
-        n.setCreatedAt(DateTime.now());
-        n.setUpdatedAt(DateTime.now());
+        n.setCreatedAt(ZonedDateTime.now());
+        n.setUpdatedAt(ZonedDateTime.now());
         n.setFixityAlgorithms(ImmutableList.of("sha256"));
         n.setProtocols(ImmutableList.of("rsync"));
         n.setReplicateFrom(ImmutableList.of());
@@ -48,13 +51,16 @@ public class SynchronizeNodeTest extends SynchronizerTest {
 
         when(remoteNode.getNode(n.getNamespace()))
                 .thenReturn(new SuccessfulCall<>(n));
+        when(localNode.updateNode(n.getNamespace(), n))
+                .thenReturn(new SuccessfulCall<>(n));
 
-        synchronizer.readLastSync();
-        synchronizer.syncNode();
+        synchronizer.syncNode(remoteNode, node, new Sync());
         blockUnitShutdown();
-
         verify(remoteNode, times(1)).getNode(n.getNamespace());
-        Assert.assertNotEquals(epoch, synchronizer.lastSync.lastNodeSync(n.getNamespace()));
+
+        LastSync lastSync = getLastSync(node, SyncType.NODE);
+        Assert.assertNotNull(lastSync);
+        Assert.assertNotEquals(epoch, lastSync.getTime());
     }
 
 }

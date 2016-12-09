@@ -2,17 +2,18 @@ package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
+import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Bag;
-import org.chronopolis.earth.models.Response;
-import org.joda.time.DateTime;
+import org.chronopolis.earth.models.SumResponse;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import retrofit2.Call;
 
-import java.util.Map;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
-import java.util.function.Function;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.times;
@@ -29,7 +30,7 @@ public class SynchronizeBagTest extends SynchronizerTest {
     private Bag bag;
     private ImmutableMap<String, String> params = ImmutableMap.of(
                 "admin_node", node,
-                "after", epoch,
+                "after", epoch.format(DateTimeFormatter.ISO_INSTANT),
                 "page", "1");
 
     @Before
@@ -46,15 +47,14 @@ public class SynchronizeBagTest extends SynchronizerTest {
         b.setAdminNode(node);
         b.setIngestNode(node);
         b.setBagType('D');
-        b.setCreatedAt(DateTime.now());
-        b.setUpdatedAt(DateTime.now());
+        b.setCreatedAt(ZonedDateTime.now());
+        b.setUpdatedAt(ZonedDateTime.now());
         b.setUuid(uuid);
         b.setFirstVersionUuid(uuid);
         b.setInterpretive(ImmutableList.of());
         b.setReplicatingNodes(ImmutableList.of());
         b.setRights(ImmutableList.of());
         b.setLocalId(uuid);
-        b.setFixities(ImmutableMap.of());
         b.setSize(0L);
         b.setVersion(1L);
         b.setMember(uuid);
@@ -68,18 +68,28 @@ public class SynchronizeBagTest extends SynchronizerTest {
         verify(localBag, times(localUpdateTimes)).updateBag(bag.getUuid(), bag);
     }
 
+    // I'm not a wrapper
+    static <T> SumResponse<T> responseRapper(T t) {
+        SumResponse<T> remoteResponse = new SumResponse<>();
+        remoteResponse.setCount(1);
+        remoteResponse.setTotalSize(0L);
+        remoteResponse.setNext(null);
+        remoteResponse.setPrevious(null);
+        remoteResponse.setResults(ImmutableList.of(t));
+        return remoteResponse;
+    }
+
     @Test
     public void testSyncMultiple() throws InterruptedException {
         Bag b1 = setupBag();
         Bag b2 = setupBag();
         Bag b3 = setupBag();
-        Response<Bag> multi = new Response<>();
+        SumResponse<Bag> multi = new SumResponse<>();
         multi.setCount(3);
         multi.setNext(null);
         multi.setPrevious(null);
         multi.setResults(ImmutableList.of(b1, b2, b3));
 
-        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
         when(remoteBag.getBags(any()))
                 .thenReturn(new SuccessfulCall<>(multi));
         when(localBag.getBag(b1.getUuid()))
@@ -95,12 +105,10 @@ public class SynchronizeBagTest extends SynchronizerTest {
         when(localBag.updateBag(b3.getUuid(), b3))
                 .thenReturn(new SuccessfulCall<>(b3));
 
-        synchronizer.readLastSync();
-        synchronizer.syncBags();
-
-        // blockUnitShutdown();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
         verify(localBag, times(3)).getBag(any());
+        // TODO: Verify our last sync
     }
 
     /**
@@ -109,19 +117,18 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagSuccessfulSync() throws InterruptedException {
-        // Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
         when(remoteBag.getBags(params))
-                .thenReturn(new SuccessfulCall<>(responseWrapper(bag)));
+                .thenReturn(new SuccessfulCall<>(responseRapper(bag)));
         when(localBag.getBag(bag.getUuid()))
                 .thenReturn(new SuccessfulCall<>(bag));
         when(localBag.updateBag(bag.getUuid(), bag))
                 .thenReturn(new SuccessfulCall<>(bag));
-        synchronizer.readLastSync();
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
-        // blockUnitShutdown();
         verifyBagMocks(1, 1, 0, 1);
-        Assert.assertNotEquals(epoch, synchronizer.lastSync.lastBagSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.BAG);
+        Assert.assertNotNull(lastSync);
+        Assert.assertNotEquals(epoch, lastSync.getTime());
     }
 
     /**
@@ -130,13 +137,13 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagRemoteException() throws InterruptedException {
-        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
-        when(remoteBag.getBags(params)).thenReturn(new ExceptedCall<>(responseWrapper(bag)));
-        synchronizer.readLastSync();
-        synchronizer.syncBags();
+        when(remoteBag.getBags(params)).thenReturn(new ExceptedCall<>(responseRapper(bag)));
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
         verifyBagMocks(1, 0, 0, 0);
-        Assert.assertEquals(epoch, synchronizer.lastSync.lastBagSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.BAG);
+        Assert.assertNotNull(lastSync);
+        Assert.assertEquals(epoch, lastSync.getTime());
     }
 
     /**
@@ -145,14 +152,14 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagRemoteFailure() throws InterruptedException {
-        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
-        when(remoteBag.getBags(params)).thenReturn(new FailedCall<>(responseWrapper(bag)));
-        synchronizer.readLastSync();
-        synchronizer.syncBags();
+        when(remoteBag.getBags(params)).thenReturn(new FailedCall<>(responseRapper(bag)));
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
 
         verifyBagMocks(1, 0, 0, 0);
-        Assert.assertEquals(epoch, synchronizer.lastSync.lastBagSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.BAG);
+        Assert.assertNotNull(lastSync);
+        Assert.assertEquals(epoch, lastSync.getTime());
     }
 
     /**
@@ -161,18 +168,18 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagLocalException() throws InterruptedException {
-        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
-        when(remoteBag.getBags(params)).thenReturn(new SuccessfulCall<>(responseWrapper(bag)));
+        when(remoteBag.getBags(params)).thenReturn(new SuccessfulCall<>(responseRapper(bag)));
         when(localBag.getBag(bag.getUuid()))
                 .thenReturn(new ExceptedCall<>(bag));
         when(localBag.createBag(bag))
                 .thenReturn(new ExceptedCall<>(bag));
-        synchronizer.readLastSync();
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
 
         verifyBagMocks(1, 1, 1, 0);
-        Assert.assertEquals(epoch, synchronizer.lastSync.lastBagSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.BAG);
+        Assert.assertNotNull(lastSync);
+        Assert.assertEquals(epoch, lastSync.getTime());
     }
 
     /**
@@ -181,17 +188,17 @@ public class SynchronizeBagTest extends SynchronizerTest {
      */
     @Test
     public void testBagLocalFailure() throws InterruptedException {
-        Function<Map<String, String>, Call<Response<Bag>>> getBags = remoteBag::getBags;
-        when(remoteBag.getBags(params)).thenReturn(new SuccessfulCall<>(responseWrapper(bag)));
+        when(remoteBag.getBags(params)).thenReturn(new SuccessfulCall<>(responseRapper(bag)));
         when(localBag.getBag(bag.getUuid()))
                 .thenReturn(new SuccessfulCall<>(bag));
         when(localBag.updateBag(bag.getUuid(), bag))
                 .thenReturn(new FailedCall<>(bag));
-        synchronizer.readLastSync();
-        synchronizer.syncBags();
+        synchronizer.syncBags(remoteBag, node, new Sync());
 
 
         verifyBagMocks(1, 1, 0, 1);
-        Assert.assertEquals(epoch, synchronizer.lastSync.lastBagSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.BAG);
+        Assert.assertNotNull(lastSync);
+        Assert.assertEquals(epoch, lastSync.getTime());
     }
 }

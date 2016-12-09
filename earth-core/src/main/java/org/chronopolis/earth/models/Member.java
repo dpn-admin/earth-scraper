@@ -1,13 +1,15 @@
 package org.chronopolis.earth.models;
 
 /**
+ * Member model
+ *
  * Created by shake on 10/9/15.
  */
 public class Member {
 
-    final String uuid;
-    final String name;
-    final String email;
+    private final String uuid;
+    private final String name;
+    private final String email;
 
     public Member(String uuid, String name, String email) {
         this.uuid = uuid;

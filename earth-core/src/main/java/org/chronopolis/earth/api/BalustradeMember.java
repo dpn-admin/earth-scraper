@@ -12,6 +12,8 @@ import retrofit2.http.QueryMap;
 
 import java.util.Map;
 
+import static org.chronopolis.earth.api.Version.VERSION;
+
 /**
  * DPN Member API
  *
@@ -19,16 +21,16 @@ import java.util.Map;
  */
 public interface BalustradeMember {
 
-    @GET("api-v1/member/")
+    @GET(VERSION + "/member/")
     Call<Response<Member>> getMembers(@QueryMap Map<String, String> params);
 
-    @GET("api-v1/member/{uuid}/")
+    @GET(VERSION + "/member/{uuid}/")
     Call<Member> getMember(@Path("/uuid") String memberUUID);
 
-    @POST("api-v1/member/")
+    @POST(VERSION + "/member/")
     Call<Member> createMember(@Body Member member);
 
-    @PUT("api-v1/member/{uuid}/")
+    @PUT(VERSION + "/member/{uuid}/")
     Call<Member> updateMember(@Path("/uuid") String memberUUID, @Body Member member);
 
 }

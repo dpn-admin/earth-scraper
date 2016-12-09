@@ -7,11 +7,11 @@
     <parent>
         <groupId>org.chronopolis</groupId>
         <artifactId>earth-scraper</artifactId>
-        <version>1.0.1-SNAPSHOT</version>
+        <version>2.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>earth-driver</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <build>
@@ -46,6 +46,76 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-tomcat</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-undertow</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.domingosuarez.boot</groupId>
+            <artifactId>spring-boot-starter-jade4j</artifactId>
+            <version>0.3.0</version>
+        </dependency>
+
+        <!--
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.8.11.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.sql2o</groupId>
+            <artifactId>sql2o</artifactId>
+            <version>1.5.4</version>
+        </dependency>
+        -->
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>2.4.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>5.2.2.Final</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-hikaricp</artifactId>
+            <version>5.2.2.Final</version>
+        </dependency>
+
+        <!--
+          This is from https://github.com/gwenn/sqlite-dialect
+          built and pushed to the adapt sonatype repository (scm.umiacs.umd.edu/maven/adapt/...)
+          so that we can pull the artifact since it isn't integrated in hibernate or maven central
+        <dependency>
+            <groupId>org.hibernate.dialect</groupId>
+            <artifactId>sqlite-dialect</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        -->
     </dependencies>
     
 </project>

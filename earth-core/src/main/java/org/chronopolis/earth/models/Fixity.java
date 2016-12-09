@@ -3,18 +3,17 @@ package org.chronopolis.earth.models;
 import org.joda.time.DateTime;
 
 /**
+ * @deprecated Will be removed by 2.0.0-RELEASE
  * Fixity encapsulation for DPN
  *
  * Created by shake on 5/1/15.
  */
+@Deprecated
 public class Fixity {
 
-    String algorithm;
-    String digest;
-    DateTime createdAt;
-
-    public Fixity() {
-    }
+    private String algorithm;
+    private String digest;
+    private DateTime createdAt;
 
     public String getAlgorithm() {
         return algorithm;

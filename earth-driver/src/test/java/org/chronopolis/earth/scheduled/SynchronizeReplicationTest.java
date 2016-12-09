@@ -2,12 +2,16 @@ package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.MoreExecutors;
+import org.chronopolis.earth.domain.LastSync;
+import org.chronopolis.earth.domain.Sync;
+import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Replication;
-import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 
@@ -26,7 +30,7 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
     private Replication replication;
     private ImmutableMap<String, String> params = ImmutableMap.of(
             "from_node", node,
-            "after", epoch,
+            "after", epoch.format(DateTimeFormatter.ISO_INSTANT),
             "page", String.valueOf(1));
 
     @Before
@@ -40,19 +44,18 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         String uuid = UUID.randomUUID().toString();
         Replication r = new Replication();
         r.setReplicationId(uuid);
-        r.setUuid(uuid);
+        r.setBag(uuid);
         r.setFromNode(node);
         r.setToNode(node);
-        r.setCreatedAt(DateTime.now());
-        r.setUpdatedAt(DateTime.now());
-        r.setBagValid(true);
+        r.setCreatedAt(ZonedDateTime.now());
+        r.setUpdatedAt(ZonedDateTime.now());
         r.setFixityNonce("");
-        r.setFixityAccept(true);
         r.setFixityAlgorithm("uuid");
         r.setFixityValue(uuid);
         r.setLink("link");
         r.setProtocol("rsync");
-        r.setStatus(Replication.Status.STORED);
+        r.setStored(true);
+        r.setStoreRequested(true);
         return r;
     }
 
@@ -74,12 +77,13 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(localTransfer.updateReplication(replication.getReplicationId(), replication))
                 .thenReturn(new SuccessfulCall<>(replication));
 
-        synchronizer.readLastSync();
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 1, 0, 1);
-        Assert.assertNotEquals(epoch, synchronizer.lastSync.lastReplicationSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.REPL);
+        Assert.assertNotNull(lastSync);
+        Assert.assertNotEquals(epoch, lastSync.getTime());
     }
 
     @Test
@@ -89,12 +93,13 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(remoteTransfer.getReplications(params))
                 .thenReturn(new ExceptedCall<>(responseWrapper(replication)));
 
-        synchronizer.readLastSync();
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 0, 0, 0);
-        Assert.assertEquals(epoch, synchronizer.lastSync.lastReplicationSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.REPL);
+        Assert.assertNotNull(lastSync);
+        Assert.assertEquals(epoch, lastSync.getTime());
     }
 
     @Test
@@ -104,12 +109,13 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(remoteTransfer.getReplications(params))
                 .thenReturn(new FailedCall<>(responseWrapper(replication)));
 
-        synchronizer.readLastSync();
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 0, 0, 0);
-        Assert.assertEquals(epoch, synchronizer.lastSync.lastReplicationSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.REPL);
+        Assert.assertNotNull(lastSync);
+        Assert.assertEquals(epoch, lastSync.getTime());
     }
 
     @Test
@@ -123,12 +129,13 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(localTransfer.createReplication(replication))
                 .thenReturn(new ExceptedCall<>(replication));
 
-        synchronizer.readLastSync();
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 1, 1, 0);
-        Assert.assertEquals(epoch, synchronizer.lastSync.lastReplicationSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.REPL);
+        Assert.assertNotNull(lastSync);
+        Assert.assertEquals(epoch, lastSync.getTime());
     }
 
     @Test
@@ -142,12 +149,13 @@ public class SynchronizeReplicationTest extends SynchronizerTest {
         when(localTransfer.updateReplication(replication.getReplicationId(), replication))
                 .thenReturn(new FailedCall<>(replication));
 
-        synchronizer.readLastSync();
-        synchronizer.syncTransfers();
+        synchronizer.syncTransfers(remoteTransfer, node, new Sync());
         blockUnitShutdown();
 
         verifyMocks(1, 1, 0, 1);
-        Assert.assertEquals(epoch, synchronizer.lastSync.lastReplicationSync(node));
+        LastSync lastSync = getLastSync(node, SyncType.REPL);
+        Assert.assertNotNull(lastSync);
+        Assert.assertEquals(epoch, lastSync.getTime());
     }
 
 }

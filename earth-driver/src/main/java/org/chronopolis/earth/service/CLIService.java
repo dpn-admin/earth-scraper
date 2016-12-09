@@ -8,12 +8,16 @@ import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.models.SumResponse;
 import org.chronopolis.earth.scheduled.Downloader;
 import org.chronopolis.earth.scheduled.Synchronizer;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,17 +48,21 @@ import java.util.Optional;
 public class CLIService implements DpnService {
     private final Logger log = LoggerFactory.getLogger(CLIService.class);
 
-    @Autowired
-    TransferAPIs transferAPIs;
+    private final BagAPIs bagAPIs;
+    private final NodeAPIs nodeAPIs;
+    private final TransferAPIs transferAPIs;
+
+    private final SessionFactory factory;
+    private final ApplicationContext context;
 
     @Autowired
-    BagAPIs bagAPIs;
-
-    @Autowired
-    NodeAPIs nodeAPIs;
-
-    @Autowired
-    ApplicationContext context;
+    public CLIService(BagAPIs bagAPIs, NodeAPIs nodeAPIs, ApplicationContext context, TransferAPIs transferAPIs, SessionFactory factory) {
+        this.bagAPIs = bagAPIs;
+        this.nodeAPIs = nodeAPIs;
+        this.context = context;
+        this.transferAPIs = transferAPIs;
+        this.factory = factory;
+    }
 
     @Override
     public void replicate() {
@@ -91,6 +99,7 @@ public class CLIService implements DpnService {
         try {
             dl = context.getBean(Downloader.class);
         } catch (Exception e) {
+            log.error("", e);
             System.out.println("Unable to create downloader");
             return;
         }
@@ -106,26 +115,42 @@ public class CLIService implements DpnService {
             retrofit2.Response<Replication> response = replicationCall.execute();
             replication = response.body();
         } catch (IOException e) {
+            log.error("", e);
             System.out.println("Unable to get replication from " + node + " with uuid " + uuid);
             return;
         }
 
         try {
-            dl.download(api, replication);
+            Session session = factory.openSession();
+            ReplicationFlow flow = getRF(session, replication);
+            session.close();
+            dl.download(replication, flow);
             System.out.println("Downloaded. Waiting on input to continue.");
             readLine();
             dl.update(api, replication);
             System.out.println("Updated. Waiting on input to continue.");
             readLine();
-            dl.untar(replication);
-            dl.validate(api, replication);
+            dl.untar(replication, flow);
+            dl.validate(api, replication, flow);
             System.out.println("Validated. Waiting on input to continue.");
             readLine();
-            dl.push(replication);
-        } catch (InterruptedException | IOException e) {
-            e.printStackTrace();
+            dl.push(replication, flow);
+        } catch (IOException e) {
+            log.error("", e);
         }
     }
+
+    private ReplicationFlow getRF(Session session, Replication transfer) {
+        ReplicationFlow flow = session.get(ReplicationFlow.class, transfer.getReplicationId());
+        if (flow == null) {
+            flow = new ReplicationFlow();
+            flow.setId(transfer.getReplicationId());
+            flow.setNode(transfer.getFromNode());
+        }
+
+        return flow;
+    }
+
 
     /**
      * Attempt to sync; Display text saying we can't if the profile is not loaded
@@ -137,6 +162,7 @@ public class CLIService implements DpnService {
             bean = context.getBean(Synchronizer.class);
             bean.synchronize();
         } catch (Exception e) {
+            log.error("", e);
             System.out.println("Synchronizer not found, please add 'sync' to your spring.profiles");
         }
     }
@@ -170,11 +196,11 @@ public class CLIService implements DpnService {
      */
     private void consumeBag(String name, BalustradeBag api) {
         log.info("Current Admin node: {}", name);
-        SimpleCallback<Response<Bag>> callback = new SimpleCallback<>();
+        SimpleCallback<SumResponse<Bag>> callback = new SimpleCallback<>();
 
-        Call<Response<Bag>> call = api.getBags(ImmutableMap.of("admin_node", name));
+        Call<SumResponse<Bag>> call = api.getBags(ImmutableMap.of("admin_node", name));
         call.enqueue(callback);
-        Optional<Response<Bag>> response = callback.getResponse();
+        Optional<SumResponse<Bag>> response = callback.getResponse();
 
         if (response.isPresent()) {
             Response<Bag> bags = response.get();
@@ -188,7 +214,7 @@ public class CLIService implements DpnService {
     /**
      * Consumer for transfer apis
      *
-     * @param entry
+     * @param entry the map of Node, Transfer apis to iterate
      */
     private void consumeTransfer(Map.Entry<String, BalustradeTransfers> entry) {
         log.info("{}", entry.getKey());
@@ -203,7 +229,10 @@ public class CLIService implements DpnService {
             Response<Replication> replications = response.get();
             log.info("Showing {} out of {} total", replications.getResults().size(), replications.getCount());
             for (Replication replication : replications.getResults()) {
-                log.info("[{}] {}", replication.status(), replication.getReplicationId());
+                log.info("{}: storeRequested={}, stored={}, cancelled={}", replication.getReplicationId(),
+                        replication.isStoreRequested(),
+                        replication.isStored(),
+                        replication.isCancelled());
             }
         }
     }
@@ -240,7 +269,14 @@ public class CLIService implements DpnService {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             return reader.readLine();
         } catch (IOException ex) {
-            throw new RuntimeException("Unable to read STDIN");
+            log.error("Unable to read from stdin", ex);
+            throw new CLIException("Unable to read STDIN");
+        }
+    }
+
+    class CLIException extends RuntimeException {
+        CLIException(String s) {
+            super(s);
         }
     }
 

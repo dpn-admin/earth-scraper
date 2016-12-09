@@ -7,9 +7,9 @@ package org.chronopolis.earth.config;
  * Created by shake on 4/27/15.
  */
 public class Endpoint {
-    String authKey;
-    String apiRoot;
-    String name;
+    private String authKey;
+    private String apiRoot;
+    private String name;
 
     public String getApiRoot() {
         return apiRoot;
