@@ -20,6 +20,8 @@ earth:
   # Cron based triggers
   cron:
     replicate: '0 0 * * * *'
+  hikari:
+    url: jdbc:h2:./db/intake
 
 spring.profiles.active: production
 

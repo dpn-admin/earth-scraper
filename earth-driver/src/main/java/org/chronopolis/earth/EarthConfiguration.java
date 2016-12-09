@@ -16,6 +16,7 @@ import org.chronopolis.earth.api.NodeAPIs;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.config.Dpn;
 import org.chronopolis.earth.config.Endpoint;
+import org.chronopolis.earth.config.Hikari;
 import org.chronopolis.earth.config.Ingest;
 import org.chronopolis.rest.api.IngestAPI;
 import org.chronopolis.rest.entities.Bag;
@@ -179,13 +180,16 @@ public class EarthConfiguration {
     }
 
     @Bean
-    SessionFactory sessionFactory() {
+    SessionFactory sessionFactory(EarthSettings settings) {
+        Hikari hikari = settings.getHikari();
         // SessionFactory factory = new SessionFactoryImpl()
         StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
                 .configure()
+                .applySettings(hikari.asMap())
                 .build();
 
-        return new MetadataSources(registry).buildMetadata().buildSessionFactory();
+        return new MetadataSources(registry)
+                .buildMetadata().buildSessionFactory();
     }
 
 }

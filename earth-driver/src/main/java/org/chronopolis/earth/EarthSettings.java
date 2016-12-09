@@ -1,6 +1,7 @@
 package org.chronopolis.earth;
 
 import org.chronopolis.earth.config.Dpn;
+import org.chronopolis.earth.config.Hikari;
 import org.chronopolis.earth.config.Ingest;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -20,6 +21,7 @@ public class EarthSettings {
     private String name;
     private Ingest ingest;
     private Dpn dpn;
+    private Hikari hikari;
 
     public String getStage() {
         return stage;
@@ -90,6 +92,15 @@ public class EarthSettings {
 
     public EarthSettings setLogChron(Boolean logChron) {
         this.logChron = logChron;
+        return this;
+    }
+
+    public Hikari getHikari() {
+        return hikari;
+    }
+
+    public EarthSettings setHikari(Hikari hikari) {
+        this.hikari = hikari;
         return this;
     }
 }
