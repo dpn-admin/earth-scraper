@@ -52,12 +52,12 @@
         <repository>
             <id>releases</id>
             <name>ADAPT Internal Releases</name>
-            <url>https://scm.umiacs.umd.edu/maven/adapt/content/repositories/releases/</url>
+            <url>https://scm.umiacs.umd.edu/adapt/repository/maven-releases/</url>
         </repository>
         <snapshotRepository>
             <id>deployment</id>
             <name>ADAPT Snapshots</name>
-            <url>https://scm.umiacs.umd.edu/maven/adapt/content/repositories/snapshots/</url>
+            <url>https://scm.umiacs.umd.edu/adapt/repository/maven-snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
 
@@ -65,7 +65,7 @@
         <repository>
             <id>releases</id>
             <name>ADAPT Internal Releases</name>
-            <url>https://scm.umiacs.umd.edu/maven/adapt/content/repositories/releases/</url>
+            <url>https://scm.umiacs.umd.edu/adapt/repository/maven-releases/</url>
         </repository>
     </repositories>
 
