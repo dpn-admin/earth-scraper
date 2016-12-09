@@ -25,11 +25,10 @@ import java.util.List;
  * Created by shake on 8/4/16.
  */
 @Controller
-@SuppressWarnings("WeakerAccess")
 public class ViewController {
     private final Logger log = LoggerFactory.getLogger(ViewController.class);
 
-    SessionFactory factory;
+    private final SessionFactory factory;
 
     @Autowired
     public ViewController(SessionFactory factory) {
