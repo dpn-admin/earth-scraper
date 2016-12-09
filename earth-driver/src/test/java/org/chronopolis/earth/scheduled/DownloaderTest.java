@@ -60,7 +60,7 @@ public class DownloaderTest {
     public static void setupDB() {
         StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
                 .configure()
-                .applySetting("hibernate.connection.url", "jdbc:h2:mem")
+                .applySetting("hibernate.connection.url", "jdbc:h2:mem:TEST")
                 .build();
 
         factory = new MetadataSources(registry).buildMetadata().buildSessionFactory();
