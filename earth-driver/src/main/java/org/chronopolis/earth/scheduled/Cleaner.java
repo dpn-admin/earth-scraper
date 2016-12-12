@@ -32,11 +32,14 @@ import java.util.Set;
 public class Cleaner {
     private final Logger log = LoggerFactory.getLogger(Cleaner.class);
 
-    @Autowired
-    EarthSettings settings;
+    private final EarthSettings settings;
+    private final TransferAPIs transferAPIs;
 
     @Autowired
-    TransferAPIs transferAPIs;
+    public Cleaner(EarthSettings settings, TransferAPIs transferAPIs) {
+        this.settings = settings;
+        this.transferAPIs = transferAPIs;
+    }
 
     @Scheduled(cron = "*/30 * * * * *")
     void clean() {

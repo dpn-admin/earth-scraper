@@ -59,6 +59,11 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
         phaser.arriveAndDeregister();
     }
 
+    /**
+     * Create an HttpDetail for the request being processed by the callback
+     *
+     * @return HttpDetail
+     */
     public HttpDetail emit() {
         phaser.arriveAndAwaitAdvance();
         HttpDetail detail = new HttpDetail();

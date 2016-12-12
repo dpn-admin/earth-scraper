@@ -88,7 +88,7 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
      * the bag's admin node to get associated replications. We then check
      * against the status to see if we are done with any transfers of the bag.
      *
-     * @param path
+     * @param path the Path of the bag to check
      * @return true if we are finished replicating, false otherwise
      */
     private boolean stateIsTerminal(Path path) {

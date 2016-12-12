@@ -1,5 +1,6 @@
 package org.chronopolis.earth.scheduled;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -56,8 +57,6 @@ import java.util.Optional;
  * The current has mucho code duplication
  *
  * TODO: We can add some bookkeeping/stats via ReplicationFlow (maybe RsyncStats/TarStats/HttpStats)
- * <p>
- * <p>
  * Created by shake on 3/31/15.
  */
 @Component
@@ -256,6 +255,8 @@ public class Downloader {
      * @param api      The transfer API to use
      * @param transfer The replication transfer to update
      */
+    @VisibleForTesting
+    @SuppressWarnings("WeakerAccess")
     public void store(BalustradeTransfers api, Replication transfer) {
         // First check if we have the bag stored in chronopolis
         String uuid = transfer.getBag();
@@ -474,7 +475,7 @@ public class Downloader {
      *
      * @param is The input stream to string...ify
      * @return string blob of the input stream
-     * @throws IOException
+     * @throws IOException if there's an error reading the InputStream
      */
     private String stringFromStream(InputStream is) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
