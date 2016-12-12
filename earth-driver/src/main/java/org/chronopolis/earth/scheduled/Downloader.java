@@ -158,7 +158,9 @@ public class Downloader {
                 }
 
                 ++page;
-                tx.commit();
+                if (tx.isActive()) {
+                    tx.commit();
+                }
             } while (transfers.getNext() != null);
             session.close();
         }
@@ -232,12 +234,14 @@ public class Downloader {
                     } catch (IOException e) {
                         log.error("[{}] Error untarring {}, skipping", from, uuid, e);
                     } finally {
-                        session.update(flow);
+                        session.saveOrUpdate(flow);
                     }
                 }
 
                 ++page;
-                tx.commit();
+                if (tx.isActive()) {
+                    tx.commit();
+                }
             } while (transfers.getNext() != null);
 
             session.close();
