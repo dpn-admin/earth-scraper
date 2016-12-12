@@ -74,7 +74,7 @@ public class SynchronizerTest {
     public static void setupDB() {
         registry = new StandardServiceRegistryBuilder()
                 .configure()
-                .applySetting("hibernate.connection.url", "jdbc:h2:mem:TEST")
+                .applySetting("hibernate.hikari.dataSource.url", "jdbc:h2:mem:TEST")
                 .build();
     }
 
