@@ -13,6 +13,7 @@
 
     <!-- Annotated classes -->
     <mapping class="org.chronopolis.earth.domain.HttpDetail"/>
+    <mapping class="org.chronopolis.earth.domain.RsyncDetail"/>
     <mapping class="org.chronopolis.earth.domain.ReplicationFlow"/>
     <mapping class="org.chronopolis.earth.domain.Sync"/>
     <mapping class="org.chronopolis.earth.domain.SyncOp"/>
