@@ -22,6 +22,7 @@ html(lang="en")
               th Extracted
               th Validated
               th Pushed
+              th Details
           tbody
             each repl in replications
               tr
@@ -31,5 +32,6 @@ html(lang="en")
                 td=repl.extracted
                 td=repl.validated
                 td=repl.pushed
+                td: a(href="/replications/" + repl.id) View Details
 
 

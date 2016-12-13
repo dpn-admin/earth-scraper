@@ -1,0 +1,29 @@
+doctype html
+html(lang="en")
+  include ../includes/head.jade
+  body
+    header
+      nav.blue-grey.darken-2
+        div.container
+          div.nav-wrapper
+            a.brand-logo Status Overview
+            ul#nav-mobile.right.hide-on-med-and-down
+              li: a(href="/") Home
+              li: a(href="/syncs") Syncs
+              li: a(href="/replications") Replications
+    div.container
+      div.row
+        h2 Http Requests
+        ul(data-collapsible="expandable")#requests.collapsible
+          each request in op.details
+            li
+              div.collapsible-header #{request.requestMethod} #{request.url}
+                span.right #{request.responseCode}
+              div.collapsible-body
+                h6 Request Body
+                  // pre: code: #{request.requestBody}
+                  blockquote: #{request.requestBody}
+                h6 Response
+                  pre: code: #{request.responseBody}
+
+

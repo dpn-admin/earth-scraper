@@ -49,6 +49,16 @@ public class ViewController {
         model.addAttribute("replications", replications);
         return "replicate/index";
     }
+    @RequestMapping(value = "/replications/{id}")
+    public String getReplication(Model model, @PathVariable("id") String id) {
+        ReplicationFlow op;
+        try (Session session = factory.openSession()) {
+            op = session.find(ReplicationFlow.class, id);
+            Hibernate.initialize(op.getDetails());
+        }
+        model.addAttribute("op", op);
+        return "replicate/replication";
+    }
 
     @RequestMapping(value = "/syncs", method = RequestMethod.GET)
     public String getSyncs(Model model) {
