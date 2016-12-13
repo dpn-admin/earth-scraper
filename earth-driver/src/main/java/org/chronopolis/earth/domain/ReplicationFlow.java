@@ -1,7 +1,11 @@
 package org.chronopolis.earth.domain;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Keep track of what we have done for replications
@@ -22,6 +26,13 @@ public class ReplicationFlow {
     private boolean received;
     private boolean extracted;
     private boolean validated;
+
+    // R e l a t i o n s h i p s
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<HttpDetail> details = new ArrayList<>();
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RsyncDetail> rsyncs = new ArrayList<>();
 
     public ReplicationFlow() {
         pushed = false;
@@ -84,4 +95,31 @@ public class ReplicationFlow {
         return this;
     }
 
+    public List<HttpDetail> getDetails() {
+        return details;
+    }
+
+    public ReplicationFlow setDetails(List<HttpDetail> details) {
+        this.details = details;
+        return this;
+    }
+
+    public ReplicationFlow addHttpDetail(HttpDetail detail) {
+        this.details.add(detail);
+        return this;
+    }
+
+    public List<RsyncDetail> getRsyncs() {
+        return rsyncs;
+    }
+
+    public ReplicationFlow setRsyncs(List<RsyncDetail> rsyncs) {
+        this.rsyncs = rsyncs;
+        return this;
+    }
+
+    public ReplicationFlow addRsync(RsyncDetail rsync) {
+        this.rsyncs.add(rsync);
+        return this;
+    }
 }
