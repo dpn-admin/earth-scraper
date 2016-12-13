@@ -55,6 +55,7 @@ public class ViewController {
         try (Session session = factory.openSession()) {
             op = session.find(ReplicationFlow.class, id);
             Hibernate.initialize(op.getDetails());
+            Hibernate.initialize(op.getRsyncs());
         }
         model.addAttribute("op", op);
         return "replicate/replication";

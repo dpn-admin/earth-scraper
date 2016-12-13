@@ -13,7 +13,7 @@ html(lang="en")
               li: a(href="/replications") Replications
     div.container
       div.row
-        h2 Http Requests
+        h5 Http Requests
         ul(data-collapsible="expandable")#requests.collapsible
           each request in op.details
             li
@@ -25,5 +25,11 @@ html(lang="en")
                   blockquote: #{request.requestBody}
                 h6 Response
                   pre: code: #{request.responseBody}
-
+        h5 Rsync Attempts
+        ul(data-collapsible="expandable")#rsync.collapsible
+          each rsync in op.rsyncs
+            li
+              div.collapsible-header #{rsync.link}
+              div.collapsible-body
+                pre: code: #{rsync.output}
 
