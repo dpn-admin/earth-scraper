@@ -163,7 +163,7 @@ public class DownloaderTest {
 
         @Override
         public Request request() {
-            return null;
+            return new Request.Builder().get().url("http://localhost:8080/test-response-only").build();
         }
     }
 

@@ -17,8 +17,10 @@ import org.chronopolis.earth.api.BalustradeTransfers;
 import org.chronopolis.earth.api.TransferAPIs;
 import org.chronopolis.earth.config.Ingest;
 import org.chronopolis.earth.domain.ReplicationFlow;
+import org.chronopolis.earth.domain.RsyncDetail;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.util.DetailEmitter;
 import org.chronopolis.rest.api.IngestAPI;
 import org.chronopolis.rest.entities.Bag;
 import org.chronopolis.rest.models.BagStatus;
@@ -145,7 +147,7 @@ public class Downloader {
                     try {
                         if (flow.isReceived()) {
                             log.info("Updating replication {}", transfer.getReplicationId());
-                            update(api, transfer);
+                            update(api, transfer, flow);
                         } else {
                             download(transfer, flow);
                         }
@@ -222,7 +224,7 @@ public class Downloader {
                         // else check if we should store
                         // todo: see if there's a way to cut down on this
                         if (flow.isPushed() && flow.isValidated() && flow.isExtracted()) {
-                            store(api, transfer);
+                            store(api, transfer, flow);
                         } else if (flow.isValidated() && flow.isExtracted()) {
                             push(transfer, flow);
                         } else if (flow.isExtracted()) {
@@ -251,13 +253,13 @@ public class Downloader {
 
     /**
      * Update a replication to note completion of ingestion into chronopolis
-     *
      * @param api      The transfer API to use
      * @param transfer The replication transfer to update
+     * @param flow     The replication flow to update
      */
     @VisibleForTesting
     @SuppressWarnings("WeakerAccess")
-    public void store(BalustradeTransfers api, Replication transfer) {
+    public void store(BalustradeTransfers api, Replication transfer, ReplicationFlow flow) {
         // First check if we have the bag stored in chronopolis
         String uuid = transfer.getBag();
 
@@ -282,13 +284,13 @@ public class Downloader {
         // TODO: Rework this a little bit so it's a little cleaner
         if (!bags.isEmpty()) {
             Bag b = bags.get(0);
-            log.info("Bag found in chronopolis, status is {}", b.getStatus());
-            if (b.getStatus() == BagStatus.PRESERVED) {
-                SimpleCallback<Replication> callback = new SimpleCallback<>();
+            BagStatus status = b.getStatus();
+            log.info("Bag found in chronopolis, status is {}", status);
+            if (status == BagStatus.PRESERVED) {
                 transfer.setStored(true);
                 transfer.setUpdatedAt(ZonedDateTime.now());
                 Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
-                call.enqueue(callback);
+                handleCall(call, flow);
             }
         }
     }
@@ -316,9 +318,9 @@ public class Downloader {
 
         // We only need to check for the presence of the response, which should
         // indicate a successful http call
-        SimpleCallback<Bag> cb = new SimpleCallback<>();
+        DetailEmitter<Bag> cb;
         Call<Bag> call = chronopolis.stageBag(request);
-        call.enqueue(cb);
+        cb = handleCall(call, flow);
 
         if (cb.getResponse().isPresent()) {
             flow.setPushed(true);
@@ -362,9 +364,8 @@ public class Downloader {
             transfer.setCancelled(true);
             transfer.setCancelReason("Bag is invalid");
             transfer.setUpdatedAt(ZonedDateTime.now());
-            SimpleCallback<Replication> callback = new SimpleCallback<>();
             Call<Replication> call = api.updateReplication(transfer.getReplicationId(), transfer);
-            call.enqueue(callback);
+            handleCall(call, flow);
         }
     }
 
@@ -423,8 +424,11 @@ public class Downloader {
         String stage = settings.getStage();
         String uuid = transfer.getBag();
         String from = transfer.getFromNode();
+        String link = transfer.getLink();
 
-        log.debug("[{}] Downloading {} from {}\n", from, uuid, transfer.getLink());
+        RsyncDetail detail = new RsyncDetail();
+        detail.setLink(link);
+        log.debug("[{}] Downloading {} from {}\n", from, uuid, link);
 
         // Create the dir for the node if it doesn't exist
         Path nodeDir = Paths.get(stage, transfer.getFromNode());
@@ -437,7 +441,7 @@ public class Downloader {
                 "-aL",                                   // archive, follow links
                 "-e ssh -o 'PasswordAuthentication no'", // disable password auth
                 "--stats",                               // print out statistics
-                transfer.getLink(),
+                link,
                 local.toString()};
         String stats;
 
@@ -457,17 +461,21 @@ public class Downloader {
             if (exit != 0) {
                 log.error("[{}] There was an error rsyncing {}! exit value {}", from, uuid, exit);
                 String error = stringFromStream(p.getErrorStream());
+                detail.setOutput(error);
                 log.error(error);
             } else {
                 log.info("rsync successful, updating replication transfer");
+                detail.setOutput(stats);
                 flow.setReceived(true);
             }
 
             log.debug("Rsync stats:\n {}", stats);
         } catch (IOException e) {
             log.error("Error executing rsync", e);
+            detail.setOutput(e.getMessage());
         }
 
+        flow.addRsync(detail);
     }
 
     /**
@@ -491,8 +499,9 @@ public class Downloader {
      * Digest the tagmanifest and update the api
      *
      * @param transfer The replication transfer to update
+     * @param flow The replication flow
      */
-    public void update(BalustradeTransfers balustrade, Replication transfer) {
+    public void update(BalustradeTransfers balustrade, Replication transfer, ReplicationFlow flow) {
         // Get the files digest
         String stage = settings.getStage();
         Path tarball = Paths.get(stage,
@@ -531,10 +540,9 @@ public class Downloader {
 
         // Do the update. We don't need the response as the transfer
         // will be continued the next time we query
-        SimpleCallback<Replication> callback = new SimpleCallback<>();
         transfer.setUpdatedAt(ZonedDateTime.now());
         Call<Replication> call = balustrade.updateReplication(transfer.getReplicationId(), transfer);
-        call.enqueue(callback);
+        handleCall(call, flow);
     }
 
     /**
@@ -587,6 +595,13 @@ public class Downloader {
 
         inChannel.close();
         flow.setExtracted(true);
+    }
+
+    private <T> DetailEmitter<T> handleCall(Call<T> call, ReplicationFlow flow) {
+        DetailEmitter<T> emitter = new DetailEmitter<T>();
+        call.enqueue(emitter);
+        flow.addHttpDetail(emitter.emit());
+        return emitter;
     }
 
 }
