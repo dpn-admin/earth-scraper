@@ -57,32 +57,32 @@ public class EarthConfiguration {
     private final Logger log = LoggerFactory.getLogger(EarthConfiguration.class);
 
     @Bean
-    DateTimeFormatter formatter() {
+    public DateTimeFormatter formatter() {
         return ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
     }
 
     @Bean
-    TransferAPIs transferAPIs() {
+    public TransferAPIs transferAPIs() {
         return new TransferAPIs();
     }
 
     @Bean
-    NodeAPIs nodeAPIs() {
+    public NodeAPIs nodeAPIs() {
         return new NodeAPIs();
     }
 
     @Bean
-    BagAPIs bagAPIs() {
+    public BagAPIs bagAPIs() {
         return new BagAPIs();
     }
 
     @Bean
-    EventAPIs eventAPIs() {
+    public EventAPIs eventAPIs() {
         return new EventAPIs();
     }
 
     @Bean
-    Gson gson() {
+    public Gson gson() {
         return new GsonBuilder()
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                 .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer())
@@ -92,7 +92,7 @@ public class EarthConfiguration {
     }
 
     @Bean
-    List<Retrofit> adapters(EarthSettings settings,
+    public List<Retrofit> adapters(EarthSettings settings,
                             TransferAPIs transferAPIs,
                             EventAPIs eventAPIs,
                             NodeAPIs nodeAPIs,
@@ -126,7 +126,7 @@ public class EarthConfiguration {
     }
 
     @Bean
-    LocalAPI local(EarthSettings settings, Gson gson) {
+    public LocalAPI local(EarthSettings settings, Gson gson) {
         Dpn dpn = settings.getDpn();
         Endpoint local = dpn.getLocal();
         log.debug("Creating local adapter for root {}", local.getApiRoot());
@@ -149,7 +149,7 @@ public class EarthConfiguration {
     }
 
     @Bean
-    IngestAPI ingestAPI(EarthSettings settings) {
+    public IngestAPI ingestAPI(EarthSettings settings) {
         Ingest api = settings.getIngest();
 
         Type bagPage = new TypeToken<PageImpl<Bag>>() {}.getType();
@@ -180,7 +180,7 @@ public class EarthConfiguration {
     }
 
     @Bean
-    SessionFactory sessionFactory(EarthSettings settings) {
+    public SessionFactory sessionFactory(EarthSettings settings) {
         Hikari hikari = settings.getHikari();
         // SessionFactory factory = new SessionFactoryImpl()
         StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
