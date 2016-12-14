@@ -86,12 +86,15 @@ public class ViewController {
     @RequestMapping(value = "/syncs/{syncId}/ops/{opId}", method = RequestMethod.GET)
     public String getOpDetails(Model model, @PathVariable("syncId") Long syncId, @PathVariable("opId") Long opId) {
         SyncOp op;
+        Sync sync;
         try (Session session = factory.openSession()) {
             op = session.find(SyncOp.class, opId);
+            sync = session.find(Sync.class, syncId);
             Hibernate.initialize(op.getDetails());
         }
 
         model.addAttribute("op", op);
+        model.addAttribute("sync", sync);
         return "sync/op-details";
     }
 
