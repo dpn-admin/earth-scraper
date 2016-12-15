@@ -81,18 +81,17 @@ public class Sync {
     }
 
     public void updateStatus() {
-        log.info("PRE PERSIST UPDATE STATUS");
         List<SyncOp> success = getOps().stream()
                 .filter(x -> x.getStatus() == SyncStatus.SUCCESS)
                 .collect(Collectors.toList());
         if(success.isEmpty()) {
-            log.info("NO SUCCESS, FAILING");
+            log.trace("NO SUCCESS, FAILING");
             setStatus(SyncStatus.FAIL);
         } else if (success.size() == getOps().size()) {
-            log.info("ALL SUCCESS");
+            log.trace("ALL SUCCESS");
             setStatus(SyncStatus.SUCCESS);
         } else {
-            log.info("WARN");
+            log.trace("WARN");
             setStatus(SyncStatus.WARN);
         }
     }

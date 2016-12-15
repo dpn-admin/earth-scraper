@@ -1,18 +1,18 @@
 package org.chronopolis.earth.scheduled;
 
 import com.google.common.collect.ImmutableList;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
-import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.EventAPIs;
 import org.chronopolis.earth.api.Events;
 import org.chronopolis.earth.api.LocalAPI;
-import org.chronopolis.earth.api.NodeAPIs;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
+import org.chronopolis.earth.config.Endpoint;
 import org.chronopolis.earth.domain.LastSync;
 import org.chronopolis.earth.domain.SyncType;
 import org.chronopolis.earth.models.Response;
@@ -34,6 +34,7 @@ import javax.persistence.NoResultException;
 import java.io.IOException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -88,19 +89,23 @@ public class SynchronizerTest {
         localAPI.setNodeAPI(localNode);
         localAPI.setTransfersAPI(localTransfer);
         localAPI.setEventsAPI(localEvents);
-        BagAPIs bagAPIs = new BagAPIs();
-        bagAPIs.put(node, remoteBag);
-        NodeAPIs nodeAPIs = new NodeAPIs();
-        nodeAPIs.put(node, remoteNode);
-        TransferAPIs transferAPIs = new TransferAPIs();
-        transferAPIs.put(node, remoteTransfer);
-        EventAPIs eventAPIs = new EventAPIs();
-        eventAPIs.put(node, remoteEvents);
+
+        Endpoint remotePoint = new Endpoint()
+                .setApiRoot("test-api-root")
+                .setAuthKey("Token token=test-api-auth-key")
+                .setName(node);
+        Gson g = new GsonBuilder().create();
+        Remote r = new MockRemote(remotePoint, g)
+                .setBags(remoteBag)
+                .setEvents(remoteEvents)
+                .setTransfers(remoteTransfer)
+                .setNodes(remoteNode);
+        List<Remote> remotes = ImmutableList.of(r);
 
         // Probably not the best thing, but this works for now. We want the transactions
         // to roll back between tests, and this is the easiest way to do it.
         factory = new MetadataSources(registry).buildMetadata().buildSessionFactory();
-        synchronizer = new Synchronizer(bagAPIs, transferAPIs, nodeAPIs, localAPI, eventAPIs, factory);
+        synchronizer = new Synchronizer(remotes, localAPI, factory);
     }
 
     static <T> Response<T> responseWrapper(T t) {

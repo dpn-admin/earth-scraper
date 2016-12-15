@@ -7,6 +7,7 @@ import java.util.Map;
  *
  * Created by shake on 8/3/16.
  */
+@Deprecated
 public class EventAPIs {
     private Map<String, Events> apiMap;
 

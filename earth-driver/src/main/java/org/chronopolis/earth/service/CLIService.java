@@ -2,12 +2,10 @@ package org.chronopolis.earth.service;
 
 import com.google.common.collect.ImmutableMap;
 import org.chronopolis.earth.SimpleCallback;
-import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.NodeAPIs;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
 import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
@@ -30,7 +28,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -48,19 +46,14 @@ import java.util.Optional;
 public class CLIService implements DpnService {
     private final Logger log = LoggerFactory.getLogger(CLIService.class);
 
-    private final BagAPIs bagAPIs;
-    private final NodeAPIs nodeAPIs;
-    private final TransferAPIs transferAPIs;
-
+    private final List<Remote> remotes;
     private final SessionFactory factory;
     private final ApplicationContext context;
 
     @Autowired
-    public CLIService(BagAPIs bagAPIs, NodeAPIs nodeAPIs, ApplicationContext context, TransferAPIs transferAPIs, SessionFactory factory) {
-        this.bagAPIs = bagAPIs;
-        this.nodeAPIs = nodeAPIs;
+    public CLIService(List<Remote> remotes, ApplicationContext context, SessionFactory factory) {
+        this.remotes = remotes;
         this.context = context;
-        this.transferAPIs = transferAPIs;
         this.factory = factory;
     }
 
@@ -71,17 +64,11 @@ public class CLIService implements DpnService {
         while (!done) {
             OPTION option = inputOption();
             if (option.equals(OPTION.BAG)) {
-                for (Map.Entry<String, BalustradeBag> entry: bagAPIs.getApiMap().entrySet()) {
-                    consumeBag(entry.getKey(), entry.getValue());
-                }
+                remotes.forEach(r -> consumeBag(r.getEndpoint().getName(), r.getBags()));
             } else if (option.equals(OPTION.TRANSFER)) {
-                for (Map.Entry<String, BalustradeTransfers> entry: transferAPIs.getApiMap().entrySet()) {
-                    consumeTransfer(entry);
-                }
+                remotes.forEach(r -> consumeTransfer(r.getEndpoint().getName(), r.getTransfers()));
             } else if (option.equals(OPTION.NODE)) {
-                for (Map.Entry<String, BalustradeNode> entry : nodeAPIs.getApiMap().entrySet()) {
-                    consumeNode(entry.getKey(), entry.getValue());
-                }
+                remotes.forEach(r -> consumeNode(r.getEndpoint().getName(), r.getNodes()));
             } else if (option.equals(OPTION.SYNC)) {
                 sync();
             } else if (option.equals(OPTION.QUIT)) {
@@ -109,8 +96,24 @@ public class CLIService implements DpnService {
         System.out.println("Replication UUID: ");
         String uuid = readLine();
 
-        BalustradeTransfers api = transferAPIs.getApiMap().get(node);
+        remotes.stream()
+                .filter(r -> r.getEndpoint().getName().equals(node))
+                // There should only be one... hopefully...
+                .forEach(r -> replicate(dl, r, uuid));
+    }
+
+    /**
+     * Helper for the above so we can have it cleanly consume
+     *
+     * @param dl The downloader to use
+     * @param r The remote to query
+     * @param uuid The replication id to use
+     */
+    private void replicate(Downloader dl, Remote r, String uuid) {
+        String node = r.getEndpoint().getName();
+        BalustradeTransfers api = r.getTransfers();
         Call<Replication> replicationCall = api.getReplication(uuid);
+        Replication replication;
         try {
             retrofit2.Response<Replication> response = replicationCall.execute();
             replication = response.body();
@@ -127,7 +130,7 @@ public class CLIService implements DpnService {
             dl.download(replication, flow);
             System.out.println("Downloaded. Waiting on input to continue.");
             readLine();
-            dl.update(api, replication);
+            dl.update(api, replication, flow);
             System.out.println("Updated. Waiting on input to continue.");
             readLine();
             dl.untar(replication, flow);
@@ -214,14 +217,13 @@ public class CLIService implements DpnService {
     /**
      * Consumer for transfer apis
      *
-     * @param entry the map of Node, Transfer apis to iterate
+     * @param node The node we're querying
+     * @param api The transfer api we're querying on
      */
-    private void consumeTransfer(Map.Entry<String, BalustradeTransfers> entry) {
-        log.info("{}", entry.getKey());
-        BalustradeTransfers api = entry.getValue();
+    private void consumeTransfer(String node, BalustradeTransfers api) {
         SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
 
-        Call<Response<Replication>> call = api.getReplications(new HashMap<String, String>());
+        Call<Response<Replication>> call = api.getReplications(new HashMap<>());
         call.enqueue(callback);
         Optional<Response<Replication>> response = callback.getResponse();
 

@@ -55,7 +55,7 @@ public class DownloadTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(tmp.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
 
         String replicationId = "download-success";
         Replication dlSuccess = createReplication(replicationId, false, false);
@@ -75,7 +75,7 @@ public class DownloadTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(tmp.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
 
         String replicationId = "download-failure";
         Replication r = createReplication(replicationId, "not-a-valid-link", false, false);

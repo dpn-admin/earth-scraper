@@ -1,10 +1,13 @@
 package org.chronopolis.earth.scheduled;
 
+import com.google.common.collect.ImmutableList;
+import com.google.gson.Gson;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
+import org.chronopolis.earth.config.Endpoint;
 import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.rest.api.IngestAPI;
@@ -28,6 +31,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import static org.mockito.Mockito.mock;
 
@@ -49,7 +53,7 @@ public class DownloaderTest {
     Path bagLink;
     Path bagExtracted;
 
-    TransferAPIs apis;
+    List<Remote> remotes;
     Downloader downloader;
 
     IngestAPI chronopolis;
@@ -72,8 +76,13 @@ public class DownloaderTest {
 
         chronopolis = mock(IngestAPI.class);
         transfer = mock(BalustradeTransfers.class);
-        apis = new TransferAPIs();
-        apis.put("mock-node", transfer);
+        Endpoint rEndpoint = new Endpoint()
+                .setApiRoot("test-api-root")
+                .setApiRoot("test-api-auth-key")
+                .setName("mock-node");
+        Remote r = new MockRemote(rEndpoint, new Gson())
+                .setTransfers(transfer);
+        remotes = ImmutableList.of(r);
 
         URL resources = ClassLoader.getSystemClassLoader().getResource("");
         bagLink = Paths.get(resources.toURI()).resolve("tar");

@@ -6,6 +6,7 @@ import java.util.Map;
  *
  * Created by shake on 10/9/15.
  */
+@Deprecated
 public class MemberAPIs {
 
     private Map<String, BalustradeMember> apiMap;

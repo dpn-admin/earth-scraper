@@ -22,7 +22,7 @@ public class UntarTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(bagLink.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
         String id = "untar-success";
         Replication r = createReplication(id, false, false);
         saveNewFlow(r, false, true, false, false);
@@ -40,7 +40,7 @@ public class UntarTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(bagExtracted.getParent().toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
         String id = "untar-failure";
         Replication r = createReplication(id, false, false);
         saveNewFlow(r, false, true, false, false);

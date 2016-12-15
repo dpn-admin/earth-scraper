@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.slf4j.Logger;
@@ -17,7 +17,10 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * File visitor which searches for bags
@@ -34,14 +37,15 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
     private int depth;
     private BalustradeTransfers current;
 
-    private final TransferAPIs apis;
+    private final Map<String, Remote> remotes;
     private final Multimap<String, Path> bags;
 
-    public BagVisitor(TransferAPIs apis) {
+    public BagVisitor(List<Remote> remotes) {
         this.depth = 0;
-        this.apis = apis;
         this.current = null;
         this.bags = HashMultimap.create();
+        this.remotes = remotes.stream()
+                .collect(Collectors.toMap(r -> r.getEndpoint().getName(), r -> r));
     }
 
     @Override
@@ -51,14 +55,14 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
         log.trace("[{}] Visiting {}", depth, dir);
 
         if (depth == DEPTH_NODE) {
-            if (!apis.getApiMap().containsKey(dir)) {
+            if (!remotes.containsKey(dir)) {
                 log.debug("Skipping {}", dir);
 
                 // roll back our depth increment
                 depth--;
                 result = FileVisitResult.SKIP_SUBTREE;
             } else {
-                current = apis.getApiMap().get(dir);
+                current = remotes.get(dir).getTransfers();
             }
         }
 

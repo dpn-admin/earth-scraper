@@ -25,7 +25,7 @@ public class ValidateTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(bagExtracted.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
         String id = "validate-success";
         Replication r = createReplication(id, false, false);
         saveNewFlow(r, true, true, false, false);
@@ -42,7 +42,7 @@ public class ValidateTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(bagExtracted.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
         String id = "validate-failure-hash";
         Replication r = createReplication(id, false, false);
         saveNewFlow(r, true, true, false, false);
@@ -63,7 +63,7 @@ public class ValidateTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setStage(bagExtracted.getParent().toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
         String id = "validate-failure-io";
         Replication r = createReplication(id, false, false);
         saveNewFlow(r, true, true, false, false);

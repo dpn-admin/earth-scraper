@@ -5,15 +5,12 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import okhttp3.OkHttpClient;
-import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.EventAPIs;
 import org.chronopolis.earth.api.Events;
 import org.chronopolis.earth.api.LocalAPI;
-import org.chronopolis.earth.api.NodeAPIs;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
 import org.chronopolis.earth.config.Dpn;
 import org.chronopolis.earth.config.Endpoint;
 import org.chronopolis.earth.config.Hikari;
@@ -40,9 +37,9 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.lang.reflect.Type;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Configuration for our beans. Mostly just creation of the rest adapters to
@@ -61,6 +58,7 @@ public class EarthConfiguration {
         return ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
     }
 
+    /*
     @Bean
     public TransferAPIs transferAPIs() {
         return new TransferAPIs();
@@ -80,6 +78,7 @@ public class EarthConfiguration {
     public EventAPIs eventAPIs() {
         return new EventAPIs();
     }
+    */
 
     @Bean
     public Gson gson() {
@@ -91,6 +90,7 @@ public class EarthConfiguration {
                 .create();
     }
 
+    /*
     @Bean
     public List<Retrofit> adapters(EarthSettings settings,
                             TransferAPIs transferAPIs,
@@ -123,6 +123,16 @@ public class EarthConfiguration {
 
 
         return adapters;
+    }
+    */
+
+    @Bean
+    public List<Remote> remotes(EarthSettings settings,
+                                Gson gson) {
+        Dpn dpn = settings.getDpn();
+        return dpn.getRemote().stream()
+                .map(e -> new Remote(e, gson))
+                .collect(Collectors.toList());
     }
 
     @Bean

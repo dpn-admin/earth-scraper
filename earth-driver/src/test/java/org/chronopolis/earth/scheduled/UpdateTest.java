@@ -26,7 +26,7 @@ public class UpdateTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setStage(bagLink.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
         String replicationId = "update-success";
         Replication r = createReplication(replicationId, false, false);
         saveNewFlow(r, false, true, false, false);
@@ -52,7 +52,7 @@ public class UpdateTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setStage(bagLink.getParent().toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
         String replicationId = "update-failure-io";
         Replication r = createReplication(replicationId, false, false);
         saveNewFlow(r, false, true, false, false);
@@ -76,7 +76,7 @@ public class UpdateTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setStage(bagLink.toString());
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
         String replicationId = "update-failure-hash";
         Replication r = createReplication(replicationId, false, false);
         saveNewFlow(r, false, true, false, false);

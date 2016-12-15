@@ -14,7 +14,8 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.chronopolis.earth.EarthSettings;
 import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
+import org.chronopolis.earth.config.Endpoint;
 import org.chronopolis.earth.config.Ingest;
 import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.domain.RsyncDetail;
@@ -68,16 +69,16 @@ public class Downloader {
     private static final String TAG_MANIFEST = "tagmanifest-sha256.txt";
     private static final String MANIFEST = "manifest-sha256.txt";
 
-    private TransferAPIs apis;
     private IngestAPI chronopolis;
     private EarthSettings settings;
+    private final List<Remote> remotes;
     private SessionFactory sessionFactory;
 
     @Autowired
-    public Downloader(EarthSettings settings, IngestAPI chronopolis, TransferAPIs apis, SessionFactory factory) {
-        this.apis = apis;
+    public Downloader(EarthSettings settings, IngestAPI chronopolis, List<Remote> remotes, SessionFactory factory) {
         this.chronopolis = chronopolis;
         this.settings = settings;
+        this.remotes = remotes;
         this.sessionFactory = factory;
     }
 
@@ -126,10 +127,11 @@ public class Downloader {
         params.put("store_requested", String.valueOf(false));
         params.put("page_size", String.valueOf(pageSize));
 
-        for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
+        for (Remote remote : remotes) {
+            Endpoint endpoint = remote.getEndpoint();
             page = 1;
-            String node = entry.getKey();
-            BalustradeTransfers api = entry.getValue();
+            String node = endpoint.getName();
+            BalustradeTransfers api = remote.getTransfers();
 
             // Open for all?
             // TODO: Put flows in a list and flush accordingly?
@@ -198,10 +200,11 @@ public class Downloader {
         params.put("stored", String.valueOf(false));
         params.put("page_size", String.valueOf(pageSize));
 
-        for (Map.Entry<String, BalustradeTransfers> entry : apis.getApiMap().entrySet()) {
+        for (Remote remote : remotes) {
+            Endpoint endpoint = remote.getEndpoint();
             page = 1;
-            String node = entry.getKey();
-            BalustradeTransfers api = entry.getValue();
+            String node = endpoint.getName();
+            BalustradeTransfers api = remote.getTransfers();
             // log.info("[{}] Getting {} replications", node, status.getName());
 
             Session session = sessionFactory.openSession();

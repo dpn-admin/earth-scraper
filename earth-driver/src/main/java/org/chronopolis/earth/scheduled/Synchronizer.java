@@ -2,15 +2,12 @@ package org.chronopolis.earth.scheduled;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ListeningExecutorService;
-import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.EventAPIs;
 import org.chronopolis.earth.api.Events;
 import org.chronopolis.earth.api.LocalAPI;
-import org.chronopolis.earth.api.NodeAPIs;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
 import org.chronopolis.earth.domain.HttpDetail;
 import org.chronopolis.earth.domain.LastSync;
 import org.chronopolis.earth.domain.Sync;
@@ -54,7 +51,6 @@ import java.util.stream.StreamSupport;
 /**
  * Functions to synchronize registry data
  * TODO: We still have a lot of boilerplate, maybe we can cut down on it somehow
- * TODO: ZonedDateTime
  * <p>
  * Created by shake on 3/31/15.
  */
@@ -70,43 +66,34 @@ public class Synchronizer {
     private static final String AFTER_PARAM = "after";
     private static final String ADMIN_PARAM = "admin_node";
 
-    private final BagAPIs bagAPIs;
-    private final NodeAPIs nodeAPIs;
     private final LocalAPI localAPI;
-    private final EventAPIs eventAPIs;
-    private final TransferAPIs transferAPIs;
+    private final List<Remote> remotes;
     private final SessionFactory sessionFactory;
 
     ListeningExecutorService service;
 
     @Autowired
-    public Synchronizer(BagAPIs bagAPIs,
-                        TransferAPIs transferAPIs,
-                        NodeAPIs nodeAPIs,
-                        LocalAPI localAPI,
-                        EventAPIs eventAPIs,
+    public Synchronizer(LocalAPI localAPI,
+                        List<Remote> remotes,
                         SessionFactory sessionFactory) {
-        this.bagAPIs = bagAPIs;
-        this.nodeAPIs = nodeAPIs;
+        this.remotes = remotes;
         this.localAPI = localAPI;
-        this.eventAPIs = eventAPIs;
-        this.transferAPIs = transferAPIs;
         this.sessionFactory = sessionFactory;
     }
 
     @Scheduled(cron = "${earth.cron.sync:0 0 0 * * *}")
     public void synchronize() {
         // leave this commented out for now, not sure if we want to sync nodes or not
-        for (Map.Entry<String, BalustradeBag> entry : bagAPIs.getApiMap().entrySet()) {
-            String node = entry.getKey();
+        for (Remote remote : remotes) {
+            String node = remote.getEndpoint().getName();
             Sync sync = new Sync().setHost(node);
-            BalustradeBag bags = entry.getValue();
-            BalustradeNode nodes = nodeAPIs.getApiMap().get(node);
-            BalustradeTransfers transfers = transferAPIs.getApiMap().get(node);
-            Events events = eventAPIs.getApiMap().get(node);
+            BalustradeBag bags = remote.getBags();
+            BalustradeNode nodes = remote.getNodes();
+            BalustradeTransfers transfers = remote.getTransfers();
+            Events events = remote.getEvents();
 
-            syncDigests(events, node, sync);
             syncBags(bags, node, sync);
+            syncDigests(events, node, sync);
             syncTransfers(transfers, node, sync);
             syncIngests(events, node, sync);
             syncFixities(events, node, sync);

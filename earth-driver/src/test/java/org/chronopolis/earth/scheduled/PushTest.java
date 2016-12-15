@@ -30,7 +30,7 @@ public class PushTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setIngest(new Ingest().setNode("ucsd-dpn"));
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
 
         Bag b = new Bag("5ayadda", "mock-node");
         String id = "push-success";
@@ -52,7 +52,7 @@ public class PushTest extends DownloaderTest {
         settings.setLogChron(true);
         settings.setIngest(new Ingest().setNode("ucsd-dpn"));
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
 
         Bag b = new Bag("5ayadda", "mock-node");
         String id = "push-failure";

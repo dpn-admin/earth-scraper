@@ -8,6 +8,7 @@ import java.util.Map;
  *
  * Created by shake on 4/27/15.
  */
+@Deprecated
 public class BagAPIs {
 
     private Map<String, BalustradeBag> apiMap;

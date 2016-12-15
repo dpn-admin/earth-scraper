@@ -28,7 +28,7 @@ public class StoreTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setLogChron(true);
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
 
         Bag b = new Bag("5ayadda", "mock-node");
         b.setStatus(BagStatus.PRESERVED);
@@ -51,7 +51,7 @@ public class StoreTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setLogChron(true);
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
 
         String replicationId = "store-fail-chron";
         Replication r = createReplication(replicationId, true, false);
@@ -72,7 +72,7 @@ public class StoreTest extends DownloaderTest {
         EarthSettings settings = new EarthSettings();
         settings.setLogChron(true);
 
-        downloader = new Downloader(settings, chronopolis, apis, factory);
+        downloader = new Downloader(settings, chronopolis, remotes, factory);
 
         Bag b = new Bag("5ayadda", "mock-node");
         b.setStatus(BagStatus.REPLICATING);
