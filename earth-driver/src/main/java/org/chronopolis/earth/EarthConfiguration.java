@@ -58,28 +58,6 @@ public class EarthConfiguration {
         return ISODateTimeFormat.dateTimeNoMillis().withZoneUTC();
     }
 
-    /*
-    @Bean
-    public TransferAPIs transferAPIs() {
-        return new TransferAPIs();
-    }
-
-    @Bean
-    public NodeAPIs nodeAPIs() {
-        return new NodeAPIs();
-    }
-
-    @Bean
-    public BagAPIs bagAPIs() {
-        return new BagAPIs();
-    }
-
-    @Bean
-    public EventAPIs eventAPIs() {
-        return new EventAPIs();
-    }
-    */
-
     @Bean
     public Gson gson() {
         return new GsonBuilder()
@@ -89,42 +67,6 @@ public class EarthConfiguration {
                 .serializeNulls()
                 .create();
     }
-
-    /*
-    @Bean
-    public List<Retrofit> adapters(EarthSettings settings,
-                            TransferAPIs transferAPIs,
-                            EventAPIs eventAPIs,
-                            NodeAPIs nodeAPIs,
-                            BagAPIs bagAPIs,
-                            Gson gson) {
-        List<Retrofit> adapters = new ArrayList<>();
-        Dpn dpn = settings.getDpn();
-
-        for (Endpoint endpoint : dpn.getRemote()) {
-            log.debug("Creating adapter for {} {}", endpoint.getName(), endpoint.getApiRoot());
-
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(new OkTokenInterceptor(endpoint.getAuthKey()))
-                    .build();
-
-            Retrofit adapter = new Retrofit.Builder()
-                    .baseUrl(endpoint.getApiRoot())
-                    .addConverterFactory(GsonConverterFactory.create(gson))
-                    .client(client)
-                    .build();
-
-            adapters.add(adapter);
-            bagAPIs.put(endpoint.getName(), adapter.create(BalustradeBag.class));
-            nodeAPIs.put(endpoint.getName(), adapter.create(BalustradeNode.class));
-            eventAPIs.put(endpoint.getName(), adapter.create(Events.class));
-            transferAPIs.put(endpoint.getName(), adapter.create(BalustradeTransfers.class));
-        }
-
-
-        return adapters;
-    }
-    */
 
     @Bean
     public List<Remote> remotes(EarthSettings settings,
