@@ -25,8 +25,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import retrofit2.Call;
 import retrofit2.Callback;
 
@@ -39,18 +37,10 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Test for our synchronizer
- * <p>
- * TODO: Node sync tests
- * TODO: Ingest sync tests
- * TODO: Fixity sync tests
- * TODO: Digest sync tests
- * <p>
- * <p>
+ *
  * Created by shake on 5/10/16.
  */
 public class SynchronizerTest {
-
-    private static final Logger log = LoggerFactory.getLogger(SynchronizerTest.class);
 
     final ZonedDateTime epoch = ZonedDateTime.from(java.time.Instant.EPOCH.atZone(ZoneOffset.UTC));
     final String node = "test-node";
@@ -105,7 +95,7 @@ public class SynchronizerTest {
         // Probably not the best thing, but this works for now. We want the transactions
         // to roll back between tests, and this is the easiest way to do it.
         factory = new MetadataSources(registry).buildMetadata().buildSessionFactory();
-        synchronizer = new Synchronizer(remotes, localAPI, factory);
+        synchronizer = new Synchronizer(localAPI, remotes, factory);
     }
 
     static <T> Response<T> responseWrapper(T t) {
@@ -174,7 +164,7 @@ public class SynchronizerTest {
 
         @Override
         public Request request() {
-            return new okhttp3.Request.Builder()
+            return new Request.Builder()
                     .url("http://localhost:1234")
                     .method("GET", null)
                     .build();

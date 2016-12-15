@@ -204,7 +204,7 @@ public class DownloaderTest {
         }
 
         @Override
-        public retrofit2.Response<T> execute() throws IOException {
+        public Response<T> execute() throws IOException {
             throw new IOException("Expected test IOException");
         }
 
