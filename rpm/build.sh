@@ -3,7 +3,7 @@
 # TODO: Fill the SOURCES folder with the artifacts after a maven build... maybe just execute the mvn install here
 rpmdir=$PWD
 sources=SOURCES
-finaljar=$sources/dpn-replication.jar
+finaljar=$sources/dpn-intake.jar
 retval=0
 
 if [ "$1" = "clean" ]; then
@@ -43,23 +43,18 @@ if [ ! -e $jarfile ]; then
     echo "Building latest jar..."
     mvn -q clean install # > /dev/null
     if [ $? -ne 0 ]; then
-        echo "Error building replication-shell"
+        echo "Error building dpn-intake"
         exit
     fi
 else
     echo "Jar already built"
 fi
 
-if [ -n $BUILD_NUMBER ]; then
-    BUILD_NUMBER=1
-fi
-
-
 # Copy the artifacts
 cp $jarfile rpm/$finaljar
 cp earth-driver/target/classes/application.yml rpm/$sources
-cp earth-driver/src/main/sh/dpn-replication.sh rpm/$sources
+cp earth-driver/src/main/sh/dpn-intake.sh rpm/$sources
 
 # cd back to where we started and build the rpm
 cd $rpmdir
-rpmbuild -ba --define="_topdir $PWD" --define="_tmppath $PWD/tmp" --define="ver $version" --define="rel $BUILD_NUMBER" SPECS/dpn.spec
+rpmbuild -ba --define="_topdir $PWD" --define="_tmppath $PWD/tmp" --define="ver $version" SPECS/dpn.spec

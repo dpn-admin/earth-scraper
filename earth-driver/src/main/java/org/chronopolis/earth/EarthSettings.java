@@ -1,24 +1,27 @@
 package org.chronopolis.earth;
 
 import org.chronopolis.earth.config.Dpn;
+import org.chronopolis.earth.config.Hikari;
 import org.chronopolis.earth.config.Ingest;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 /**
  * Configuration Properties for our application
  *
  * Created by shake on 11/14/14.
  */
-@Component
 @ConfigurationProperties(prefix = "earth")
 public class EarthSettings {
 
-    Boolean disableSNI;
-    String stage;
-    String name;
-    Ingest ingest;
-    Dpn dpn;
+    private Boolean disableSNI;
+    private Boolean logLocal;
+    private Boolean logRemote;
+    private Boolean logChron;
+    private String stage;
+    private String name;
+    private Ingest ingest;
+    private Dpn dpn;
+    private Hikari hikari;
 
     public String getStage() {
         return stage;
@@ -62,6 +65,42 @@ public class EarthSettings {
 
     public EarthSettings setName(String name) {
         this.name = name;
+        return this;
+    }
+
+    public Boolean logLocal() {
+        return logLocal;
+    }
+
+    public EarthSettings setLogLocal(Boolean logLocal) {
+        this.logLocal = logLocal;
+        return this;
+    }
+
+    public Boolean logRemote() {
+        return logRemote;
+    }
+
+    public EarthSettings setLogRemote(Boolean logRemote) {
+        this.logRemote = logRemote;
+        return this;
+    }
+
+    public Boolean logChron() {
+        return logChron;
+    }
+
+    public EarthSettings setLogChron(Boolean logChron) {
+        this.logChron = logChron;
+        return this;
+    }
+
+    public Hikari getHikari() {
+        return hikari;
+    }
+
+    public EarthSettings setHikari(Hikari hikari) {
+        this.hikari = hikari;
         return this;
     }
 }

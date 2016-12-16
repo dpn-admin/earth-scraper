@@ -1,12 +1,11 @@
 package org.chronopolis.earth.util;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 import org.chronopolis.earth.SimpleCallback;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
 import org.slf4j.Logger;
@@ -18,6 +17,10 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * File visitor which searches for bags
@@ -34,14 +37,15 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
     private int depth;
     private BalustradeTransfers current;
 
-    private final TransferAPIs apis;
+    private final Map<String, Remote> remotes;
     private final Multimap<String, Path> bags;
 
-    public BagVisitor(TransferAPIs apis) {
+    public BagVisitor(List<Remote> remotes) {
         this.depth = 0;
-        this.apis = apis;
         this.current = null;
         this.bags = HashMultimap.create();
+        this.remotes = remotes.stream()
+                .collect(Collectors.toMap(r -> r.getEndpoint().getName(), r -> r));
     }
 
     @Override
@@ -51,14 +55,14 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
         log.trace("[{}] Visiting {}", depth, dir);
 
         if (depth == DEPTH_NODE) {
-            if (!apis.getApiMap().containsKey(dir)) {
+            if (!remotes.containsKey(dir)) {
                 log.debug("Skipping {}", dir);
 
                 // roll back our depth increment
                 depth--;
                 result = FileVisitResult.SKIP_SUBTREE;
             } else {
-                current = apis.getApiMap().get(dir);
+                current = remotes.get(dir).getTransfers();
             }
         }
 
@@ -75,11 +79,9 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
 
         // Kind of funny how we check if it's a directory in visitFile, but it be how it be
         // Ignore tarballs, just get the directory names
-        if (path.toFile().isDirectory()) {
-            if (stateIsTerminal(path)) {
-                log.debug("{} is in terminal state", path.getFileName());
-                bags.put(path.getParent().getFileName().toString(), path);
-            }
+        if (path.toFile().isDirectory() && stateIsTerminal(path)){
+            log.debug("{} is in terminal state", path.getFileName());
+            bags.put(path.getParent().getFileName().toString(), path);
         }
 
         return FileVisitResult.CONTINUE;
@@ -90,7 +92,7 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
      * the bag's admin node to get associated replications. We then check
      * against the status to see if we are done with any transfers of the bag.
      *
-     * @param path
+     * @param path the Path of the bag to check
      * @return true if we are finished replicating, false otherwise
      */
     private boolean stateIsTerminal(Path path) {
@@ -116,9 +118,7 @@ public class BagVisitor extends SimpleFileVisitor<Path> {
                 Replication replication = replications.getResults().get(0);
 
                 // Check the state of the replication
-                terminal = replication.status() == Replication.Status.STORED
-                        || replication.status() == Replication.Status.CANCELLED
-                        || replication.status() == Replication.Status.REJECTED;
+                terminal = replication.isStored() || replication.isCancelled();
             }
 
         } else {

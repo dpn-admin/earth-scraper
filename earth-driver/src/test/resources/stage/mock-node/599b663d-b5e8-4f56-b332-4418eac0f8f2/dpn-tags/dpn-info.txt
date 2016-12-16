@@ -1,0 +1,11 @@
+DPN-Object-ID:  599b663d-b5e8-4f56-b332-4418eac0f8f2
+Local-ID:  test.edu/test.edu.bag3
+Ingest-Node-Name:  APTrust
+Ingest-Node-Address:  160 McCormick Rd., Charlottesville, VA 22904
+Ingest-Node-Contact-Name:  APTrust Administrator
+Ingest-Node-Contact-Email:  help@aptrust.org
+Version-Number:  1
+First-Version-Object-ID:  599b663d-b5e8-4f56-b332-4418eac0f8f2
+Interpretive-Object-ID:
+Rights-Object-ID:
+Bag-Type:  data

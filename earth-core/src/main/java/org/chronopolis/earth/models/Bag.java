@@ -1,9 +1,8 @@
 package org.chronopolis.earth.models;
 
-import org.joda.time.DateTime;
 
+import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Representation of a DPN bag
@@ -12,24 +11,20 @@ import java.util.Map;
  */
 public class Bag {
 
-    String uuid;
-    String localId;
-    Long size;
-    String firstVersionUuid;
-    String ingestNode;
-    String adminNode;
-    Long version;
-    char bagType;
-    List<String> interpretive;
-    List<String> rights;
-    List<String> replicatingNodes;
-    Map<String, String> fixities;
-    DateTime createdAt;
-    DateTime updatedAt;
-    String member;
-
-    public Bag() {
-    }
+    private String uuid;
+    private String localId;
+    private Long size;
+    private String firstVersionUuid;
+    private String ingestNode;
+    private String adminNode;
+    private Long version;
+    private char bagType;
+    private List<String> interpretive;
+    private List<String> rights;
+    private List<String> replicatingNodes;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime updatedAt;
+    private String member;
 
     public String getUuid() {
         return uuid;
@@ -130,29 +125,20 @@ public class Bag {
         return this;
     }
 
-    public Map<String, String> getFixities() {
-        return fixities;
-    }
-
-    public Bag setFixities(Map<String, String> fixities) {
-        this.fixities = fixities;
-        return this;
-    }
-
-    public DateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public Bag setCreatedAt(DateTime createdAt) {
+    public Bag setCreatedAt(ZonedDateTime createdAt) {
         this.createdAt = createdAt;
         return this;
     }
 
-    public DateTime getUpdatedAt() {
+    public ZonedDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public Bag setUpdatedAt(DateTime updatedAt) {
+    public Bag setUpdatedAt(ZonedDateTime updatedAt) {
         this.updatedAt = updatedAt;
         return this;
     }

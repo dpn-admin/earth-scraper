@@ -1,19 +1,21 @@
 package org.chronopolis.earth.service;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import org.chronopolis.earth.SimpleCallback;
-import org.chronopolis.earth.api.BagAPIs;
 import org.chronopolis.earth.api.BalustradeBag;
 import org.chronopolis.earth.api.BalustradeNode;
 import org.chronopolis.earth.api.BalustradeTransfers;
-import org.chronopolis.earth.api.NodeAPIs;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
+import org.chronopolis.earth.domain.ReplicationFlow;
 import org.chronopolis.earth.models.Bag;
 import org.chronopolis.earth.models.Node;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.models.Response;
+import org.chronopolis.earth.models.SumResponse;
+import org.chronopolis.earth.scheduled.Downloader;
 import org.chronopolis.earth.scheduled.Synchronizer;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +28,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Service for when we are run from the command line
@@ -43,17 +46,16 @@ import java.util.Map;
 public class CLIService implements DpnService {
     private final Logger log = LoggerFactory.getLogger(CLIService.class);
 
-    @Autowired
-    TransferAPIs transferAPIs;
+    private final List<Remote> remotes;
+    private final SessionFactory factory;
+    private final ApplicationContext context;
 
     @Autowired
-    BagAPIs bagAPIs;
-
-    @Autowired
-    NodeAPIs nodeAPIs;
-
-    @Autowired
-    ApplicationContext context;
+    public CLIService(List<Remote> remotes, ApplicationContext context, SessionFactory factory) {
+        this.remotes = remotes;
+        this.context = context;
+        this.factory = factory;
+    }
 
     @Override
     public void replicate() {
@@ -62,25 +64,96 @@ public class CLIService implements DpnService {
         while (!done) {
             OPTION option = inputOption();
             if (option.equals(OPTION.BAG)) {
-                for (Map.Entry<String, BalustradeBag> entry: bagAPIs.getApiMap().entrySet()) {
-                    consumeBag(entry.getKey(), entry.getValue());
-                }
+                remotes.forEach(r -> consumeBag(r.getEndpoint().getName(), r.getBags()));
             } else if (option.equals(OPTION.TRANSFER)) {
-                for (Map.Entry<String, BalustradeTransfers> entry: transferAPIs.getApiMap().entrySet()) {
-                    consumeTransfer(entry);
-                }
+                remotes.forEach(r -> consumeTransfer(r.getEndpoint().getName(), r.getTransfers()));
             } else if (option.equals(OPTION.NODE)) {
-                for (Map.Entry<String, BalustradeNode> entry : nodeAPIs.getApiMap().entrySet()) {
-                    consumeNode(entry.getKey(), entry.getValue());
-                }
+                remotes.forEach(r -> consumeNode(r.getEndpoint().getName(), r.getNodes()));
             } else if (option.equals(OPTION.SYNC)) {
                 sync();
             } else if (option.equals(OPTION.QUIT)) {
                 log.info("Quitting");
                 done = true;
+            } else if (option.equals(OPTION.REPLICATE)) {
+                doReplication();
             }
         }
     }
+
+    private void doReplication() {
+        Downloader dl;
+        Replication replication;
+        try {
+            dl = context.getBean(Downloader.class);
+        } catch (Exception e) {
+            log.error("", e);
+            System.out.println("Unable to create downloader");
+            return;
+        }
+
+        System.out.println("DPN Node: ");
+        String node = readLine();
+        System.out.println("Replication UUID: ");
+        String uuid = readLine();
+
+        remotes.stream()
+                .filter(r -> r.getEndpoint().getName().equals(node))
+                // There should only be one... hopefully...
+                .forEach(r -> replicate(dl, r, uuid));
+    }
+
+    /**
+     * Helper for the above so we can have it cleanly consume
+     *
+     * @param dl The downloader to use
+     * @param r The remote to query
+     * @param uuid The replication id to use
+     */
+    private void replicate(Downloader dl, Remote r, String uuid) {
+        String node = r.getEndpoint().getName();
+        BalustradeTransfers api = r.getTransfers();
+        Call<Replication> replicationCall = api.getReplication(uuid);
+        Replication replication;
+        try {
+            retrofit2.Response<Replication> response = replicationCall.execute();
+            replication = response.body();
+        } catch (IOException e) {
+            log.error("", e);
+            System.out.println("Unable to get replication from " + node + " with uuid " + uuid);
+            return;
+        }
+
+        try {
+            Session session = factory.openSession();
+            ReplicationFlow flow = getRF(session, replication);
+            session.close();
+            dl.download(replication, flow);
+            System.out.println("Downloaded. Waiting on input to continue.");
+            readLine();
+            dl.update(api, replication, flow);
+            System.out.println("Updated. Waiting on input to continue.");
+            readLine();
+            dl.untar(replication, flow);
+            dl.validate(api, replication, flow);
+            System.out.println("Validated. Waiting on input to continue.");
+            readLine();
+            dl.push(replication, flow);
+        } catch (IOException e) {
+            log.error("", e);
+        }
+    }
+
+    private ReplicationFlow getRF(Session session, Replication transfer) {
+        ReplicationFlow flow = session.get(ReplicationFlow.class, transfer.getReplicationId());
+        if (flow == null) {
+            flow = new ReplicationFlow();
+            flow.setId(transfer.getReplicationId());
+            flow.setNode(transfer.getFromNode());
+        }
+
+        return flow;
+    }
+
 
     /**
      * Attempt to sync; Display text saying we can't if the profile is not loaded
@@ -92,6 +165,7 @@ public class CLIService implements DpnService {
             bean = context.getBean(Synchronizer.class);
             bean.synchronize();
         } catch (Exception e) {
+            log.error("", e);
             System.out.println("Synchronizer not found, please add 'sync' to your spring.profiles");
         }
     }
@@ -125,11 +199,11 @@ public class CLIService implements DpnService {
      */
     private void consumeBag(String name, BalustradeBag api) {
         log.info("Current Admin node: {}", name);
-        SimpleCallback<Response<Bag>> callback = new SimpleCallback<>();
+        SimpleCallback<SumResponse<Bag>> callback = new SimpleCallback<>();
 
-        Call<Response<Bag>> call = api.getBags(ImmutableMap.of("admin_node", name));
+        Call<SumResponse<Bag>> call = api.getBags(ImmutableMap.of("admin_node", name));
         call.enqueue(callback);
-        Optional<Response<Bag>> response = callback.getResponse();
+        Optional<SumResponse<Bag>> response = callback.getResponse();
 
         if (response.isPresent()) {
             Response<Bag> bags = response.get();
@@ -143,14 +217,13 @@ public class CLIService implements DpnService {
     /**
      * Consumer for transfer apis
      *
-     * @param entry
+     * @param node The node we're querying
+     * @param api The transfer api we're querying on
      */
-    private void consumeTransfer(Map.Entry<String, BalustradeTransfers> entry) {
-        log.info("{}", entry.getKey());
-        BalustradeTransfers api = entry.getValue();
+    private void consumeTransfer(String node, BalustradeTransfers api) {
         SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
 
-        Call<Response<Replication>> call = api.getReplications(new HashMap<String, String>());
+        Call<Response<Replication>> call = api.getReplications(new HashMap<>());
         call.enqueue(callback);
         Optional<Response<Replication>> response = callback.getResponse();
 
@@ -158,7 +231,10 @@ public class CLIService implements DpnService {
             Response<Replication> replications = response.get();
             log.info("Showing {} out of {} total", replications.getResults().size(), replications.getCount());
             for (Replication replication : replications.getResults()) {
-                log.info("[{}] {}", replication.status(), replication.getReplicationId());
+                log.info("{}: storeRequested={}, stored={}, cancelled={}", replication.getReplicationId(),
+                        replication.isStoreRequested(),
+                        replication.isStored(),
+                        replication.isCancelled());
             }
         }
     }
@@ -195,12 +271,19 @@ public class CLIService implements DpnService {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             return reader.readLine();
         } catch (IOException ex) {
-            throw new RuntimeException("Unable to read STDIN");
+            log.error("Unable to read from stdin", ex);
+            throw new CLIException("Unable to read STDIN");
+        }
+    }
+
+    class CLIException extends RuntimeException {
+        CLIException(String s) {
+            super(s);
         }
     }
 
     private enum OPTION {
-        BAG, TRANSFER, NODE, QUIT, SYNC, UNKNOWN;
+        BAG, TRANSFER, NODE, QUIT, SYNC, REPLICATE, UNKNOWN;
 
         private static OPTION fromString(String text) {
             switch (text) {
@@ -219,6 +302,9 @@ public class CLIService implements DpnService {
                 case "S":
                 case "s":
                     return SYNC;
+                case "R":
+                case "r":
+                    return REPLICATE;
                 default:
                     return UNKNOWN;
             }

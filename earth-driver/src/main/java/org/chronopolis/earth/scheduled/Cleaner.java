@@ -3,7 +3,7 @@ package org.chronopolis.earth.scheduled;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import org.chronopolis.earth.EarthSettings;
-import org.chronopolis.earth.api.TransferAPIs;
+import org.chronopolis.earth.api.Remote;
 import org.chronopolis.earth.models.Replication;
 import org.chronopolis.earth.util.BagVisitor;
 import org.slf4j.Logger;
@@ -19,6 +19,7 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -32,16 +33,19 @@ import java.util.Set;
 public class Cleaner {
     private final Logger log = LoggerFactory.getLogger(Cleaner.class);
 
-    @Autowired
-    EarthSettings settings;
+    private final EarthSettings settings;
+    private final List<Remote> remotes;
 
     @Autowired
-    TransferAPIs transferAPIs;
+    public Cleaner(EarthSettings settings, List<Remote> remotes) {
+        this.settings = settings;
+        this.remotes = remotes;
+    }
 
     @Scheduled(cron = "*/30 * * * * *")
     void clean() {
         Path stage = Paths.get(settings.getStage());
-        BagVisitor visitor = new BagVisitor(transferAPIs);
+        BagVisitor visitor = new BagVisitor(remotes);
         Set<FileVisitOption> options =
                 ImmutableSet.of(FileVisitOption.FOLLOW_LINKS);
 
@@ -61,7 +65,7 @@ public class Cleaner {
 
     private void clean(Replication replication) {
         String from = replication.getFromNode();
-        String uuid = replication.getUuid();
+        String uuid = replication.getBag();
 
         Path bag = Paths.get(settings.getStage(), from, uuid);
         if (bag.toFile().exists()) {

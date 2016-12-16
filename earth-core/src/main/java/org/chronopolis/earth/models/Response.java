@@ -8,10 +8,10 @@ import java.util.List;
  * Created by shake on 3/2/15.
  */
 public class Response<E> {
-    int count;
-    String next;
-    String previous;
-    List<E> results;
+    private int count;
+    private String next;
+    private String previous;
+    private List<E> results;
 
     public int getCount() {
         return count;

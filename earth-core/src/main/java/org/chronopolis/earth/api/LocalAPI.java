@@ -7,14 +7,12 @@ package org.chronopolis.earth.api;
  */
 public class LocalAPI {
 
-    String node;
-    BalustradeBag bagAPI;
-    BalustradeNode nodeAPI;
-    BalustradeTransfers transfersAPI;
-    BalustradeMember memberAPI;
-
-    public LocalAPI() {
-    }
+    private String node;
+    private Events eventsAPI;
+    private BalustradeBag bagAPI;
+    private BalustradeNode nodeAPI;
+    private BalustradeTransfers transfersAPI;
+    private BalustradeMember memberAPI;
 
     public String getNode() {
         return node;
@@ -58,6 +56,15 @@ public class LocalAPI {
 
     public LocalAPI setMemberAPI(BalustradeMember memberAPI) {
         this.memberAPI = memberAPI;
+        return this;
+    }
+
+    public Events getEventsAPI() {
+        return eventsAPI;
+    }
+
+    public LocalAPI setEventsAPI(Events eventsAPI) {
+        this.eventsAPI = eventsAPI;
         return this;
     }
 }

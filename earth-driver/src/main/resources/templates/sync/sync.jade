@@ -1,0 +1,34 @@
+doctype html
+html(lang="en")
+  include ../includes/head.jade
+  body
+    header
+      nav.nav-extended.light-blue.darken-3
+        div.container
+          div.nav-wrapper
+            a.brand-logo Status Overview
+            ul#nav-mobile.right.hide-on-med-and-down
+              li: a(href="/") Home
+              li: a(href="/syncs") Syncs
+              li: a(href="/replications") Replications
+          div.tabs.transparent
+            a.breadcrumb(href="/syncs") All Syncs
+            a.breadcrumb(href="/syncs/" + sync.id) #{sync.id}
+    div.container
+      div.row
+        table.narrow.bordered.highlight
+          thead
+            tr
+              th(style="width: 1%") Status
+              th Type
+              th Details
+          tbody
+            each op in sync.ops
+              tr
+                if op.status == "SUCCESS"
+                  td.green.accent-2
+                else
+                  td.red
+                td=op.type
+                td: a(href=sync.id + "/ops/" + op.id) View Details
+
