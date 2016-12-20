@@ -248,7 +248,7 @@ public class Synchronizer {
         try {
             retrofit2.Response<Node> execute = call.execute();
             Node update = execute.body();
-            if (update.getUpdatedAt().isAfter(last.getTime())) {
+            if (update != null && update.getUpdatedAt().isAfter(last.getTime())) {
                 Call<Node> updateCall = local.updateNode(node, update);
                 retrofit2.Response<Node> uExecute = updateCall.execute();
 
@@ -294,17 +294,12 @@ public class Synchronizer {
                     Call<Digest> create = local.createDigest(d.getBag(), d);
                     create.enqueue(emitter);
                     op.addDetail(emitter.emit());
-                    if (!emitter.getResponse().isPresent()) {
-                        op.setStatus(SyncStatus.FAIL_LOCAL);
-                    }
-
-                    return emitter.getResponse().isPresent();
+                    return checkResponse(emitter, op);
                 }))
                 .anyMatch(p -> !p.isPresent() || !p.get());
 
         sync.addOp(op);
         if (!failure) {
-            // TODO: saveorupdate
             last.setTime(now);
         } else {
             log.warn("Not updating last sync to digest for {}", node);
@@ -451,6 +446,7 @@ public class Synchronizer {
                 } else {
                     count = -1;
                     results.add(null);
+                    op.setStatus(SyncStatus.FAIL_REMOTE);
                     body = response.errorBody().toString();
                 }
 
@@ -491,15 +487,30 @@ public class Synchronizer {
      * @param <T>    The type of the registry model to create
      */
     private static <T> boolean syncImmutable(Function<T, Call<T>> create, T argT, SyncOp op) {
-        boolean success = true;
         DetailEmitter<T> emitter = new DetailEmitter<>();
         Call<T> call = create.apply(argT);
         call.enqueue(emitter);
         op.addDetail(emitter.emit());
-        if (!emitter.getResponse().isPresent()) {
+        return checkResponse(emitter, op);
+    }
+
+    private static <T> boolean checkResponse(DetailEmitter<T> emitter, SyncOp op) {
+        boolean success = true;
+        boolean response = emitter.getResponse().isPresent();
+        boolean conflict = emitter.getRawResponse()
+                            .map(r -> r.code() == 409)  // conflict == true
+                            .orElse(false);      // or if we had no response
+
+        // how should this work? we have two booleans:
+        // r = if we got a response from the server
+        // c = if there was a conflict
+        // no response + no conflict => true => error communicating with server
+        // no response + conflict => false => we already have the digest, no error
+        if (!response && !conflict) {
             success = false;
             op.setStatus(SyncStatus.FAIL_LOCAL);
         }
+
         return success;
     }
 
@@ -528,11 +539,8 @@ public class Synchronizer {
         getCall.enqueue(getCB);
         Optional<T> response = getCB.getResponse();
         op.addDetail(getCB.emit());
-        if (response.isPresent()) {
-            sync = update.apply(argU, argT);
-        } else {
-            sync = create.apply(argT);
-        }
+        sync = response.map(t -> update.apply(argU, argT))
+                       .orElseGet(() -> create.apply(argT));
 
         // Perform our 'sync' call
         sync.enqueue(syncCB);
