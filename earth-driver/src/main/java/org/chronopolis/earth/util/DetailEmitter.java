@@ -24,14 +24,17 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
 
     private T response;
     private Request rawRequest;
+    private Response<T> rawResponse;
     private int responseCode = -1;
     private String responseBody;
     private Phaser phaser = new Phaser(2);
 
     @Override
     public void onResponse(Call<T> call, Response<T> response) {
+        rawRequest = call.request();
+        rawResponse = response;
         responseCode = response.code();
-        this.rawRequest = call.request();
+
         if (response.isSuccessful()) {
             this.response = response.body();
         } else {
@@ -88,5 +91,10 @@ public class DetailEmitter<T> implements Callback<T>, ResponseGetter<T> {
     public Optional<T> getResponse() {
         phaser.arriveAndAwaitAdvance();
         return Optional.ofNullable(response);
+    }
+
+    public Optional<Response<T>> getRawResponse() {
+        phaser.arriveAndAwaitAdvance();
+        return Optional.ofNullable(rawResponse);
     }
 }
