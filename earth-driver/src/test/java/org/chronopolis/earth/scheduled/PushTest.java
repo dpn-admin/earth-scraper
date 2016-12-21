@@ -1,5 +1,6 @@
 package org.chronopolis.earth.scheduled;
 
+import com.google.common.collect.ImmutableList;
 import org.chronopolis.earth.EarthSettings;
 import org.chronopolis.earth.config.Ingest;
 import org.chronopolis.earth.domain.ReplicationFlow;
@@ -28,7 +29,7 @@ public class PushTest extends DownloaderTest {
         // Setup our downloader object
         EarthSettings settings = new EarthSettings();
         settings.setLogChron(true);
-        settings.setIngest(new Ingest().setNode("ucsd-dpn"));
+        settings.setIngest(new Ingest().setReplicateTo(ImmutableList.of("ucsd-dpn")));
 
         downloader = new Downloader(settings, chronopolis, remotes, factory);
 
@@ -50,7 +51,7 @@ public class PushTest extends DownloaderTest {
         // Setup our downloader object
         EarthSettings settings = new EarthSettings();
         settings.setLogChron(true);
-        settings.setIngest(new Ingest().setNode("ucsd-dpn"));
+        settings.setIngest(new Ingest().setReplicateTo(ImmutableList.of("ucsd-dpn")));
 
         downloader = new Downloader(settings, chronopolis, remotes, factory);
 
