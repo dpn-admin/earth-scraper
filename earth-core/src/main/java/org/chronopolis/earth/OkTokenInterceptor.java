@@ -23,7 +23,7 @@ public class OkTokenInterceptor implements Interceptor {
 
     @Override
     public Response intercept(Chain chain) throws IOException {
-        String tokenAuth = "Token " + token;
+        String tokenAuth = "Token token=" + token;
         Request authRequest = chain.request().newBuilder()
                 .header(AUTHORIZATION, tokenAuth)
                 .build();
