@@ -1,7 +1,6 @@
 package org.chronopolis.earth.scheduled;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.hash.HashCode;
@@ -317,7 +316,7 @@ public class Downloader {
         request.setName(transfer.getBag());
         request.setLocation(transfer.getFromNode() + "/" + transfer.getBag());
         request.setRequiredReplications(1);
-        request.setReplicatingNodes(ImmutableList.of(ingest.getNode()));
+        request.setReplicatingNodes(ingest.getReplicateTo());
 
         // We only need to check for the presence of the response, which should
         // indicate a successful http call
