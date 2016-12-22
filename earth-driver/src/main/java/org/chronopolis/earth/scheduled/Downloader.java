@@ -85,6 +85,7 @@ public class Downloader {
                                                Map<String, String> params) {
         SimpleCallback<Response<Replication>> callback = new SimpleCallback<>();
         params.put("to_node", settings.getName());
+        params.put("cancelled", String.valueOf(false));
         Call<Response<Replication>> call = balustrade.getReplications(params);
         call.enqueue(callback);
         Optional<Response<Replication>> response = callback.getResponse();
