@@ -2,6 +2,14 @@ This is an implementation for a client to the Balustrade API for DPN.
 
 Build it with maven. Run jar, run.
 
+### Building
+
+Building EarthScraper can be done with maven. It can be packaged with `mvn package` or installed to
+your local maven repository with `mvn install`. When running either of these a fat jar is built 
+for the earth-driver modeule (courtesy of the `spring-boot-maven-plugin`) which can be run with
+`java -jar target/earth-driver-2.0.0-SNAPSHOT.jar`, replacing the version information with the current
+build.
+
 ### Development
 
 Maven and Spring provide the necessary resources to run this in development. By using `mvn spring-boot:run`, 
